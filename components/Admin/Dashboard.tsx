@@ -13,6 +13,9 @@ interface DashboardProps {
   onToggleStatus: (form: FormSchema) => void;
 }
 
+// URL de producción proporcionada por el usuario
+const PRODUCTION_URL = "https://eco-formularios.vercel.app";
+
 export const Dashboard: React.FC<DashboardProps> = ({ 
   forms, 
   onCreate, 
@@ -29,12 +32,17 @@ export const Dashboard: React.FC<DashboardProps> = ({
     // This allows the client to open it without a backend database for the schema
     const encoded = encodeFormToUrl(form);
     
-    // Use window.location.href (without query params) to support subpaths/deployments
-    const baseUrl = window.location.href.split('?')[0];
+    // Logic: If we are on localhost, use the Production URL for sharing.
+    // If we are already on the deployed site, use the current location.
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    
+    // Remove query params and trailing slashes for the base
+    const currentBase = window.location.href.split('?')[0].replace(/\/$/, '');
+    const targetBase = isLocal ? PRODUCTION_URL.replace(/\/$/, '') : currentBase;
     
     // IMPORTANT: encodeURIComponent is crucial here because Base64 contains '+' 
     // which URLSearchParams interprets as a space, breaking the data.
-    const url = `${baseUrl}?data=${encodeURIComponent(encoded)}`;
+    const url = `${targetBase}?data=${encodeURIComponent(encoded)}`;
     
     navigator.clipboard.writeText(url).then(() => {
       setCopiedId(form.id);
