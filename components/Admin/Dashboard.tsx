@@ -28,7 +28,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
     // We encode the ENTIRE form definition into the URL
     // This allows the client to open it without a backend database for the schema
     const encoded = encodeFormToUrl(form);
-    const url = `${window.location.origin}?data=${encoded}`;
+    
+    // Use window.location.href (without query params) to support subpaths/deployments
+    const baseUrl = window.location.href.split('?')[0];
+    
+    // IMPORTANT: encodeURIComponent is crucial here because Base64 contains '+' 
+    // which URLSearchParams interprets as a space, breaking the data.
+    const url = `${baseUrl}?data=${encodeURIComponent(encoded)}`;
     
     navigator.clipboard.writeText(url).then(() => {
       setCopiedId(form.id);

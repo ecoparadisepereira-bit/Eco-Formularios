@@ -18,6 +18,7 @@ function App() {
   const [forms, setForms] = useState<FormSchema[]>([]);
   const [currentForm, setCurrentForm] = useState<FormSchema | null>(null);
   const [isPublicView, setIsPublicView] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     // 1. Check for Shared URL (?data=...)
@@ -30,6 +31,9 @@ function App() {
             setCurrentForm(sharedForm);
             setIsPublicView(true);
             setView('client');
+            return;
+        } else {
+            setError("El enlace del formulario es inválido o está dañado.");
             return;
         }
     }
@@ -100,6 +104,27 @@ function App() {
   };
 
   // --- RENDERING ---
+
+  // 0. Error View
+  if (error) {
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+            <div className="bg-white p-8 rounded-2xl shadow-xl text-center max-w-md border border-gray-100">
+                <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+                </div>
+                <h2 className="text-xl font-bold text-gray-900 mb-2">Enlace Inválido</h2>
+                <p className="text-gray-500">{error}</p>
+                <button 
+                    onClick={() => { setError(null); window.history.replaceState({}, '', window.location.pathname); }} 
+                    className="mt-6 px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
+                >
+                    Ir al Inicio
+                </button>
+            </div>
+        </div>
+    );
+  }
 
   // 1. Public View (No Login required)
   if (isPublicView && currentForm) {
