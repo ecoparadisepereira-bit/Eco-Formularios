@@ -10,27 +10,35 @@ interface ResponseViewerProps {
 
 export const ResponseViewer: React.FC<ResponseViewerProps> = ({ form, onBack }) => {
   const [responses, setResponses] = useState<FormResponse[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const data = storageService.getResponsesByFormIdLocal(form.id);
-    // Sort by date descending
-    setResponses(data.sort((a, b) => b.submittedAt - a.submittedAt));
+    const loadData = async () => {
+        setLoading(true);
+        const data = await storageService.fetchResponses(form.id);
+        // Sort by date descending
+        setResponses(data.sort((a, b) => b.submittedAt - a.submittedAt));
+        setLoading(false);
+    };
+    loadData();
   }, [form.id]);
 
   const downloadCSV = () => {
     // 1. Headers: Submission Date + All Fields
-    const headers = ['Fecha Envío', ...form.fields.map(f => f.label.replace(/,/g, ''))]; // Remove commas to avoid CSV break
+    const headers = ['Fecha Envío', ...form.fields.map(f => f.label.replace(/,/g, ''))]; 
     
     // 2. Rows
     const rows = responses.map(r => {
       const date = new Date(r.submittedAt).toLocaleString();
       const answerCells = form.fields.map(f => {
-        let val = r.answers[f.id];
+        // En la BD de la nube, las claves son las Etiquetas (Labels), no los IDs
+        let val = r.answers[f.label];
+        
         if (f.type === FieldType.IMAGE_UPLOAD && val) {
-            return '[Imagen Adjunta]'; // Don't put massive base64 in CSV
+            return '[Imagen Adjunta]';
         }
         if (val === null || val === undefined) return '';
-        // Escape quotes and wrap in quotes for CSV safety
+        // Escape quotes
         return `"${String(val).replace(/"/g, '""')}"`;
       });
       return [date, ...answerCells].join(',');
@@ -61,13 +69,15 @@ export const ResponseViewer: React.FC<ResponseViewerProps> = ({ form, onBack }) 
             </button>
             <div>
               <h2 className="text-2xl font-bold text-gray-900">Respuestas: {form.title}</h2>
-              <p className="text-gray-500 text-sm">Total recibidas: {responses.length}</p>
+              <p className="text-gray-500 text-sm">
+                  {loading ? 'Cargando datos del Excel...' : `Total recibidas: ${responses.length}`}
+              </p>
             </div>
           </div>
           
           <button 
             onClick={downloadCSV}
-            disabled={responses.length === 0}
+            disabled={responses.length === 0 || loading}
             className="flex items-center gap-2 px-5 py-2.5 bg-green-600 text-white rounded-xl hover:bg-green-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
           >
             <DownloadIcon className="w-4 h-4" />
@@ -90,10 +100,17 @@ export const ResponseViewer: React.FC<ResponseViewerProps> = ({ form, onBack }) 
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {responses.length === 0 ? (
+                {loading ? (
+                    <tr>
+                        <td colSpan={form.fields.length + 1} className="px-6 py-12 text-center text-gray-500">
+                           <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-green-200 border-t-green-700 mb-2"></div>
+                           <p>Sincronizando con Google Sheets...</p>
+                        </td>
+                    </tr>
+                ) : responses.length === 0 ? (
                    <tr>
                      <td colSpan={form.fields.length + 1} className="px-6 py-12 text-center text-gray-400 italic">
-                       Aún no hay respuestas para este formulario.
+                       Aún no hay respuestas para este formulario en la nube.
                      </td>
                    </tr>
                 ) : (
@@ -102,17 +119,19 @@ export const ResponseViewer: React.FC<ResponseViewerProps> = ({ form, onBack }) 
                       <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
                         {new Date(response.submittedAt).toLocaleString()}
                       </td>
-                      {form.fields.map(field => (
+                      {form.fields.map(field => {
+                        const val = response.answers[field.label];
+                        return (
                         <td key={field.id} className="px-6 py-4 text-sm text-gray-800">
-                          {field.type === FieldType.IMAGE_UPLOAD && response.answers[field.id] ? (
+                          {field.type === FieldType.IMAGE_UPLOAD && val ? (
                             <div className="relative group w-16 h-16 rounded-lg overflow-hidden border border-gray-200">
                                 <img 
-                                    src={response.answers[field.id] as string} 
+                                    src={val as string} 
                                     alt="User Upload" 
                                     className="w-full h-full object-cover" 
                                 />
                                 <a 
-                                    href={response.answers[field.id] as string} 
+                                    href={val as string} 
                                     download={`upload_${field.id}.png`}
                                     className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white"
                                 >
@@ -120,10 +139,10 @@ export const ResponseViewer: React.FC<ResponseViewerProps> = ({ form, onBack }) 
                                 </a>
                             </div>
                           ) : (
-                            <span className="line-clamp-2">{response.answers[field.id] || '-'}</span>
+                            <span className="line-clamp-2">{val || '-'}</span>
                           )}
                         </td>
-                      ))}
+                      )})}
                     </tr>
                   ))
                 )}

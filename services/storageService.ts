@@ -8,8 +8,10 @@ export const storageService = {
   
   fetchForms: async (): Promise<FormSchema[]> => {
     try {
+      // Usamos text/plain para evitar Preflight CORS complejo
       const response = await fetch(MASTER_SHEET_URL, {
         method: 'POST',
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
         body: JSON.stringify({ action: 'get_forms' })
       });
       const data = await response.json();
@@ -24,14 +26,13 @@ export const storageService = {
     try {
       await fetch(MASTER_SHEET_URL, {
         method: 'POST',
-        mode: 'no-cors', // Apps Script restriction
+        mode: 'no-cors', // Escribir sin esperar respuesta legible (CORS opaco)
         headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({ 
           action: 'save_form', 
           form: form 
         })
       });
-      // Note: With no-cors we can't read the response, but we assume success/optimistic UI
     } catch (e) {
       console.error("Error saving form to cloud", e);
       throw e;
@@ -54,29 +55,42 @@ export const storageService = {
     }
   },
 
-  // --- Responses (LOCAL CACHE ONLY FOR ADMIN VIEWER) ---
-  // Las respuestas reales van directo a Sheet desde el FormRenderer.
-  // Esto es solo para la vista previa "Local" del admin si se usa.
-  saveResponseLocal: (response: FormResponse): void => {
+  // --- Responses (CLOUD SYNC) ---
+  
+  fetchResponses: async (formId: string): Promise<FormResponse[]> => {
     try {
-      const RESPONSES_KEY = 'novaform_responses';
-      const data = localStorage.getItem(RESPONSES_KEY);
-      const responses: FormResponse[] = data ? JSON.parse(data) : [];
-      responses.push(response);
-      localStorage.setItem(RESPONSES_KEY, JSON.stringify(responses));
+       const response = await fetch(MASTER_SHEET_URL, {
+        method: 'POST',
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ 
+            action: 'get_responses',
+            formId: formId
+        })
+      });
+      const rawData = await response.json();
+      
+      // Mapear datos planos del Excel a estructura FormResponse
+      if (Array.isArray(rawData)) {
+        return rawData.map((row: any) => ({
+            id: Math.random().toString(36).substr(2, 9), // ID temporal para la vista
+            formId: formId,
+            submittedAt: new Date(row.Fecha || Date.now()).getTime(),
+            answers: row // Pasamos todo el objeto fila como respuestas
+        }));
+      }
+      return [];
     } catch (e) {
-      console.error("Error saving local response", e);
+        console.error("Error fetching responses from cloud", e);
+        return [];
     }
+  },
+
+  // Método legacy local (ya no se usa como fuente principal)
+  saveResponseLocal: (response: FormResponse): void => {
+     // No-op o backup temporal
   },
   
   getResponsesByFormIdLocal: (formId: string): FormResponse[] => {
-     try {
-      const RESPONSES_KEY = 'novaform_responses';
-      const data = localStorage.getItem(RESPONSES_KEY);
-      const responses: FormResponse[] = data ? JSON.parse(data) : [];
-      return responses.filter(r => r.formId === formId);
-    } catch (e) {
       return [];
-    }
   }
 };

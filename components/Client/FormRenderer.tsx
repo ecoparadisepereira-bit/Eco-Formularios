@@ -66,20 +66,17 @@ export const FormRenderer: React.FC<FormRendererProps> = ({ form, onBack }) => {
 
     setIsSubmitting(true);
 
-    const cleanData: Record<string, any> = {};
+    const cleanData: Record<string, any> = {
+        formId: form.id, // ID para vincular en BD
+        formTitle: form.title
+    };
+    
+    // Mapear respuestas usando la Etiqueta (Label) como clave para el Excel
     form.fields.forEach(f => {
         cleanData[f.label] = answers[f.id] || ""; 
     });
 
     try {
-        const localResponse: FormResponse = {
-            id: Math.random().toString(36).substr(2, 9),
-            formId: form.id,
-            answers,
-            submittedAt: Date.now()
-        };
-        storageService.saveResponseLocal(localResponse);
-
         const targetUrl = form.googleSheetUrl || SYSTEM_DEFAULT_SHEET_URL;
 
         if (targetUrl) {
