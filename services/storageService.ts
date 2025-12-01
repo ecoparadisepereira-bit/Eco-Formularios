@@ -62,12 +62,14 @@ export const storageService = {
        // CRITICAL: Use the custom sheet URL if provided, otherwise fallback to Master
        const targetUrl = sheetUrl && sheetUrl.length > 10 ? sheetUrl : MASTER_SHEET_URL;
 
+       // IMPORTANTE: NO enviamos formId en el cuerpo para pedir TODAS las filas.
+       // Filtraremos en el cliente (frontend) para ser más tolerantes a errores de IDs.
        const response = await fetch(targetUrl, {
         method: 'POST',
         headers: { "Content-Type": "text/plain;charset=utf-8" },
         body: JSON.stringify({ 
-            action: 'get_responses',
-            formId: formId
+            action: 'get_responses'
+            // formId: formId  <-- COMENTADO PARA TRAER TODO
         })
       });
       const rawData = await response.json();
@@ -76,8 +78,8 @@ export const storageService = {
       if (Array.isArray(rawData)) {
         return rawData.map((row: any) => ({
             id: Math.random().toString(36).substr(2, 9), // ID temporal para la vista
-            formId: formId,
-            submittedAt: new Date(row.Fecha || Date.now()).getTime(),
+            formId: row.formId || 'unknown', // Usamos el del excel o desconocido
+            submittedAt: row.Fecha ? new Date(row.Fecha).getTime() : Date.now(),
             answers: row // Pasamos todo el objeto fila como respuestas
         }));
       }
