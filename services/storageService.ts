@@ -57,9 +57,12 @@ export const storageService = {
 
   // --- Responses (CLOUD SYNC) ---
   
-  fetchResponses: async (formId: string): Promise<FormResponse[]> => {
+  fetchResponses: async (formId: string, sheetUrl?: string): Promise<FormResponse[]> => {
     try {
-       const response = await fetch(MASTER_SHEET_URL, {
+       // CRITICAL: Use the custom sheet URL if provided, otherwise fallback to Master
+       const targetUrl = sheetUrl && sheetUrl.length > 10 ? sheetUrl : MASTER_SHEET_URL;
+
+       const response = await fetch(targetUrl, {
         method: 'POST',
         headers: { "Content-Type": "text/plain;charset=utf-8" },
         body: JSON.stringify({ 

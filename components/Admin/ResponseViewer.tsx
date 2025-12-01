@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { FormSchema, FormResponse, FieldType } from '../../types';
 import { storageService } from '../../services/storageService';
-import { ArrowLeftIcon, DownloadIcon } from '../ui/Icons';
+import { ArrowLeftIcon, DownloadIcon, SearchIcon, RefreshIcon } from '../ui/Icons';
 
 interface ResponseViewerProps {
   form: FormSchema;
@@ -11,24 +11,42 @@ interface ResponseViewerProps {
 export const ResponseViewer: React.FC<ResponseViewerProps> = ({ form, onBack }) => {
   const [responses, setResponses] = useState<FormResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const loadData = async () => {
+    setLoading(true);
+    // Pass the form's custom Google Sheet URL to the service
+    const data = await storageService.fetchResponses(form.id, form.googleSheetUrl);
+    // Sort by date descending
+    setResponses(data.sort((a, b) => b.submittedAt - a.submittedAt));
+    setLoading(false);
+  };
 
   useEffect(() => {
-    const loadData = async () => {
-        setLoading(true);
-        const data = await storageService.fetchResponses(form.id);
-        // Sort by date descending
-        setResponses(data.sort((a, b) => b.submittedAt - a.submittedAt));
-        setLoading(false);
-    };
     loadData();
   }, [form.id]);
+
+  // FILTERING LOGIC
+  const filteredResponses = responses.filter(r => {
+    if (!searchTerm) return true;
+    const lowerTerm = searchTerm.toLowerCase();
+    
+    // Check submission date
+    if (new Date(r.submittedAt).toLocaleString().toLowerCase().includes(lowerTerm)) return true;
+
+    // Check all answer values
+    const answers = Object.values(r.answers);
+    return answers.some(val => 
+        val && String(val).toLowerCase().includes(lowerTerm)
+    );
+  });
 
   const downloadCSV = () => {
     // 1. Headers: Submission Date + All Fields
     const headers = ['Fecha Envío', ...form.fields.map(f => f.label.replace(/,/g, ''))]; 
     
-    // 2. Rows
-    const rows = responses.map(r => {
+    // 2. Rows (Use filtered responses so user gets what they see)
+    const rows = filteredResponses.map(r => {
       const date = new Date(r.submittedAt).toLocaleString();
       const answerCells = form.fields.map(f => {
         // En la BD de la nube, las claves son las Etiquetas (Labels), no los IDs
@@ -62,27 +80,58 @@ export const ResponseViewer: React.FC<ResponseViewerProps> = ({ form, onBack }) 
       <div className="max-w-7xl mx-auto">
         
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-          <div className="flex items-center gap-4">
-            <button onClick={onBack} className="p-2 hover:bg-white rounded-full text-gray-600 transition-colors shadow-sm border border-transparent hover:border-gray-200">
-              <ArrowLeftIcon />
-            </button>
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">Respuestas: {form.title}</h2>
-              <p className="text-gray-500 text-sm">
-                  {loading ? 'Cargando datos del Excel...' : `Total recibidas: ${responses.length}`}
-              </p>
+        <div className="flex flex-col gap-6 mb-8">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div className="flex items-center gap-4">
+                    <button onClick={onBack} className="p-2 hover:bg-white rounded-full text-gray-600 transition-colors shadow-sm border border-transparent hover:border-gray-200">
+                    <ArrowLeftIcon />
+                    </button>
+                    <div>
+                    <h2 className="text-2xl font-bold text-gray-900">Respuestas: {form.title}</h2>
+                    <p className="text-gray-500 text-sm">
+                        {loading ? 'Cargando datos...' : `Mostrando ${filteredResponses.length} de ${responses.length} respuestas`}
+                    </p>
+                    </div>
+                </div>
+                
+                <div className="flex gap-2">
+                    <button 
+                        onClick={loadData}
+                        title="Actualizar Datos"
+                        className="p-2.5 bg-white border border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50 hover:text-green-700 transition-colors shadow-sm"
+                    >
+                        <RefreshIcon className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+                    </button>
+                    <button 
+                        onClick={downloadCSV}
+                        disabled={filteredResponses.length === 0 || loading}
+                        className="flex items-center gap-2 px-5 py-2.5 bg-green-600 text-white rounded-xl hover:bg-green-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                    >
+                        <DownloadIcon className="w-4 h-4" />
+                        <span className="hidden sm:inline">Descargar CSV</span>
+                    </button>
+                </div>
             </div>
-          </div>
-          
-          <button 
-            onClick={downloadCSV}
-            disabled={responses.length === 0 || loading}
-            className="flex items-center gap-2 px-5 py-2.5 bg-green-600 text-white rounded-xl hover:bg-green-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-          >
-            <DownloadIcon className="w-4 h-4" />
-            <span>Descargar CSV (Excel/Sheets)</span>
-          </button>
+
+            {/* Search Bar */}
+            <div className="bg-white p-2 rounded-xl border border-gray-200 shadow-sm flex items-center gap-2 max-w-md w-full">
+                <SearchIcon className="w-5 h-5 text-gray-400 ml-2" />
+                <input 
+                    type="text" 
+                    placeholder="Filtrar por nombre, fecha o respuesta..." 
+                    className="w-full py-1.5 px-2 outline-none text-gray-700 placeholder-gray-400"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                {searchTerm && (
+                    <button 
+                        onClick={() => setSearchTerm('')} 
+                        className="text-xs font-bold text-gray-400 hover:text-gray-600 px-2"
+                    >
+                        LIMPIAR
+                    </button>
+                )}
+            </div>
         </div>
 
         {/* Table Container */}
@@ -104,17 +153,19 @@ export const ResponseViewer: React.FC<ResponseViewerProps> = ({ form, onBack }) 
                     <tr>
                         <td colSpan={form.fields.length + 1} className="px-6 py-12 text-center text-gray-500">
                            <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-green-200 border-t-green-700 mb-2"></div>
-                           <p>Sincronizando con Google Sheets...</p>
+                           <p>Leyendo datos de Google Sheets...</p>
                         </td>
                     </tr>
-                ) : responses.length === 0 ? (
+                ) : filteredResponses.length === 0 ? (
                    <tr>
                      <td colSpan={form.fields.length + 1} className="px-6 py-12 text-center text-gray-400 italic">
-                       Aún no hay respuestas para este formulario en la nube.
+                       {responses.length > 0 
+                         ? "No se encontraron resultados para tu búsqueda." 
+                         : "Aún no hay respuestas en la nube para este formulario."}
                      </td>
                    </tr>
                 ) : (
-                  responses.map((response) => (
+                  filteredResponses.map((response) => (
                     <tr key={response.id} className="hover:bg-gray-50/50 transition-colors">
                       <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
                         {new Date(response.submittedAt).toLocaleString()}
