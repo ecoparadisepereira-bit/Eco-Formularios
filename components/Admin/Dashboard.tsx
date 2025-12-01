@@ -5,6 +5,7 @@ import { encodeFormToUrl } from '../../utils';
 
 interface DashboardProps {
   forms: FormSchema[];
+  isLoading: boolean;
   onCreate: () => void;
   onEdit: (form: FormSchema) => void;
   onDelete: (id: string) => void;
@@ -13,11 +14,11 @@ interface DashboardProps {
   onToggleStatus: (form: FormSchema) => void;
 }
 
-// URL de producción proporcionada por el usuario
 const PRODUCTION_URL = "https://eco-formularios.vercel.app";
 
 export const Dashboard: React.FC<DashboardProps> = ({ 
   forms, 
+  isLoading,
   onCreate, 
   onEdit, 
   onDelete, 
@@ -28,20 +29,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const handleShare = (form: FormSchema) => {
-    // We encode the ENTIRE form definition into the URL
-    // This allows the client to open it without a backend database for the schema
     const encoded = encodeFormToUrl(form);
-    
-    // Logic: If we are on localhost, use the Production URL for sharing.
-    // If we are already on the deployed site, use the current location.
     const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    
-    // Remove query params and trailing slashes for the base
     const currentBase = window.location.href.split('?')[0].replace(/\/$/, '');
     const targetBase = isLocal ? PRODUCTION_URL.replace(/\/$/, '') : currentBase;
-    
-    // IMPORTANT: encodeURIComponent is crucial here because Base64 contains '+' 
-    // which URLSearchParams interprets as a space, breaking the data.
     const url = `${targetBase}?data=${encodeURIComponent(encoded)}`;
     
     navigator.clipboard.writeText(url).then(() => {
@@ -66,13 +57,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </button>
       </div>
 
-      {forms.length === 0 ? (
+      {isLoading ? (
+         <div className="flex flex-col items-center justify-center py-20">
+            <div className="w-10 h-10 border-4 border-green-200 border-t-[#043200] rounded-full animate-spin mb-4"></div>
+            <p className="text-gray-500 font-medium">Sincronizando con Google Sheets...</p>
+         </div>
+      ) : forms.length === 0 ? (
         <div className="text-center py-20 bg-white rounded-2xl border border-gray-100 shadow-sm">
           <div className="bg-gray-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
             <PlusIcon className="w-8 h-8 text-gray-400" />
           </div>
           <h3 className="text-lg font-medium text-gray-900">No tienes formularios aún</h3>
-          <p className="text-gray-500 mt-1 max-w-sm mx-auto">Comienza creando uno manualmente o usa nuestra IA para generarlo en segundos.</p>
+          <p className="text-gray-500 mt-1 max-w-sm mx-auto">Tus formularios se guardarán en la nube (Google Sheets).</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -100,7 +96,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <div className="mt-4 text-xs text-gray-400 font-medium flex items-center gap-2">
                    <span className="bg-gray-100 px-2 py-1 rounded">{form.fields.length} campos</span>
                    <span>•</span>
-                   <span>{form.googleSheetUrl ? 'Sincronizado con Sheets' : 'Local'}</span>
+                   <span>Guardado en Cloud</span>
                 </div>
               </div>
               

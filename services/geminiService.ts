@@ -5,8 +5,10 @@ import { FormSchema, FieldType } from '../types';
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
 export const generateFormSchema = async (prompt: string): Promise<Partial<FormSchema>> => {
+  // Check if API KEY is present
   if (!process.env.API_KEY) {
-    throw new Error("API Key is missing");
+    console.error("API Key is missing in environment variables.");
+    throw new Error("MISSING_KEY");
   }
 
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -94,8 +96,11 @@ export const generateFormSchema = async (prompt: string): Promise<Partial<FormSc
       }
     };
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Gemini Generation Error:", error);
-    throw new Error("No se pudo generar el formulario. Intenta ser más específico.");
+    if (error.message === "MISSING_KEY") {
+        throw new Error("Falta la API KEY en la configuración de Vercel (Environment Variables).");
+    }
+    throw new Error("No se pudo conectar con la IA. Verifica tu conexión o intenta de nuevo.");
   }
 };

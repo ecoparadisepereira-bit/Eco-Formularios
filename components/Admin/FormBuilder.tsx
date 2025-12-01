@@ -5,7 +5,7 @@ import { generateFormSchema } from '../../services/geminiService';
 
 interface FormBuilderProps {
   initialData?: FormSchema | null;
-  onSave: (form: FormSchema) => void;
+  onSave: (form: FormSchema) => Promise<void>;
   onCancel: () => void;
 }
 
@@ -18,12 +18,12 @@ const defaultThankYou = {
   buttonText: "Ver mis reservas"
 };
 
-// URL proporcionada por el usuario para Google Sheets
 const DEFAULT_SHEET_URL = "https://script.google.com/macros/s/AKfycbyQscuJzzO-2lQQiTwuNTL0-LrCQ-82LcVa8npwaK7AuG7LJa4sCLqJKSmL5qDZG851/exec";
 
 export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, onCancel }) => {
   const [activeTab, setActiveTab] = useState<'fields' | 'settings'>('fields');
   const [loadingAi, setLoadingAi] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [aiPrompt, setAiPrompt] = useState('');
   const [showAiModal, setShowAiModal] = useState(false);
 
@@ -34,7 +34,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
   const [thankYou, setThankYou] = useState(initialData?.thankYouScreen || defaultThankYou);
   const [googleSheetUrl, setGoogleSheetUrl] = useState(initialData?.googleSheetUrl || DEFAULT_SHEET_URL);
 
-  // AI Generation Handler
   const handleAiGenerate = async () => {
     if (!aiPrompt.trim()) return;
     setLoadingAi(true);
@@ -45,8 +44,8 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
       if (schema.fields) setFields(schema.fields as FormField[]);
       if (schema.thankYouScreen) setThankYou(schema.thankYouScreen);
       setShowAiModal(false);
-    } catch (err) {
-      alert("Error generando el formulario. Intenta de nuevo.");
+    } catch (err: any) {
+      alert(err.message || "Error generando el formulario.");
     } finally {
       setLoadingAi(false);
     }
@@ -80,8 +79,9 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!title.trim()) return alert("El título es obligatorio");
+    setIsSaving(true);
     const newForm: FormSchema = {
       id: initialData?.id || generateId(),
       title,
@@ -92,12 +92,13 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
       createdAt: initialData?.createdAt || Date.now(),
       googleSheetUrl: googleSheetUrl.trim()
     };
-    onSave(newForm);
+    await onSave(newForm);
+    // Note: onSave in App.tsx switches view, so we don't need to unset isSaving typically, but safe to do so.
+    setIsSaving(false);
   };
 
   return (
     <div className="bg-white min-h-screen">
-      {/* Header */}
       <div className="border-b px-6 py-4 flex justify-between items-center sticky top-0 bg-white/95 backdrop-blur z-10">
         <div className="flex items-center gap-4">
           <button onClick={onCancel} className="p-2 hover:bg-gray-100 rounded-full text-gray-600">
@@ -119,16 +120,20 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
            )}
           <button 
             onClick={handleSave}
-            className="px-6 py-2 bg-[#043200] text-white rounded-lg hover:bg-[#064e00] font-medium"
+            disabled={isSaving}
+            className="px-6 py-2 bg-[#043200] text-white rounded-lg hover:bg-[#064e00] font-medium disabled:opacity-70 disabled:cursor-wait flex items-center gap-2"
           >
-            Guardar
+            {isSaving ? (
+                <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    Guardando...
+                </>
+            ) : "Guardar"}
           </button>
         </div>
       </div>
 
       <div className="max-w-5xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        {/* Left Sidebar: Controls */}
         <div className="lg:col-span-1 space-y-6">
           <div className="bg-white rounded-xl border p-4 shadow-sm sticky top-24">
             <div className="flex gap-2 mb-6 border-b pb-2">
@@ -159,16 +164,16 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
               <div className="space-y-4">
                 <div className="bg-green-50 p-3 rounded-lg border border-green-100">
                     <label className="block text-xs font-bold text-green-800 mb-1 uppercase">Conexión Google Sheets</label>
-                    <p className="text-xs text-green-700 mb-2">Pega aquí la URL de tu Web App de Apps Script para guardar respuestas en la nube.</p>
+                    <p className="text-xs text-green-700 mb-2">URL del Script de Google Apps (Base de Datos):</p>
                     <input 
                     type="url" 
-                    placeholder="https://script.google.com/macros/s/..."
                     value={googleSheetUrl}
                     onChange={(e) => setGoogleSheetUrl(e.target.value)}
-                    className="w-full border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 outline-none bg-white"
+                    className="w-full border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 outline-none bg-white text-gray-500"
+                    readOnly
                     />
                     <p className="text-[10px] text-green-600 mt-2 font-medium">
-                      * Nota: Si cambias esta URL, deberás volver a generar/copiar el enlace público del formulario.
+                      * Configurado por defecto para Ecoparadise.
                     </p>
                 </div>
 
@@ -190,7 +195,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
                     className="w-full border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-green-700 outline-none"
                   />
                   
-                  {/* Variables Helper */}
                   <div className="mt-2 p-2 bg-gray-50 border border-gray-100 rounded text-xs">
                     <span className="font-semibold text-gray-600 block mb-1">Variables Disponibles:</span>
                     <div className="flex flex-wrap gap-1">
@@ -200,7 +204,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
                             </span>
                         ))}
                     </div>
-                    <p className="mt-1 text-gray-400">Usa estas variables en el mensaje para insertar las respuestas del cliente.</p>
                   </div>
                 </div>
                 <div>
@@ -227,9 +230,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
           </div>
         </div>
 
-        {/* Right Area: Canvas */}
         <div className="lg:col-span-2 space-y-6">
-          {/* General Info */}
           <div className="bg-white border rounded-xl p-6 shadow-sm">
              <input 
               type="text"
@@ -247,7 +248,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
              />
           </div>
 
-          {/* Fields List */}
           <div className="space-y-4">
             {fields.length === 0 && (
               <div className="text-center py-12 bg-gray-50 rounded-xl border border-dashed border-gray-300">
@@ -256,8 +256,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
             )}
             {fields.map((field, index) => (
               <div key={field.id} className="group bg-white border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow relative">
-                
-                {/* Field Controls */}
                 <div className="absolute right-4 top-4 opacity-0 group-hover:opacity-100 flex gap-2 transition-opacity">
                   <button onClick={() => moveField(index, 'up')} disabled={index === 0} className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30"><GripVerticalIcon className="w-4 h-4 rotate-90" /></button>
                   <button onClick={() => moveField(index, 'down')} disabled={index === fields.length-1} className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30"><GripVerticalIcon className="w-4 h-4 -rotate-90" /></button>
@@ -281,7 +279,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
                     </div>
                   </div>
 
-                  {/* Specific Settings based on Type */}
                   <div className="pt-2 flex flex-wrap gap-4 items-center">
                     <label className="flex items-center gap-2 cursor-pointer select-none">
                       <input 
@@ -293,7 +290,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
                       <span className="text-sm text-gray-600">Obligatorio</span>
                     </label>
 
-                    {/* Number Range */}
                     {field.type === FieldType.NUMBER && (
                       <div className="flex gap-2 items-center text-sm">
                         <input 
@@ -314,7 +310,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
                       </div>
                     )}
 
-                    {/* Options for Select */}
                     {field.type === FieldType.SINGLE_SELECT && (
                       <div className="w-full mt-2 bg-gray-50 p-3 rounded-lg">
                         <p className="text-xs text-gray-500 mb-2 font-medium">Opciones (separadas por coma)</p>
@@ -335,7 +330,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
         </div>
       </div>
 
-      {/* AI Modal */}
       {showAiModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6">
@@ -343,8 +337,16 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
               <SparklesIcon className="w-6 h-6" />
               <h3 className="text-xl font-bold text-gray-900">Generador Mágico AI</h3>
             </div>
+            
+            {(!process.env.API_KEY || process.env.API_KEY.length < 10) && (
+                <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-lg border border-red-100">
+                    <strong>Error de Configuración:</strong> Falta la API Key de Gemini en Vercel. 
+                    <a href="https://aistudio.google.com/app/apikey" target="_blank" className="underline ml-1 font-bold">Consíguela aquí</a>
+                </div>
+            )}
+
             <p className="text-gray-600 mb-4">
-              Describe el formulario que necesitas. Por ejemplo: "Un formulario de inscripción para un taller de cocina con preferencias dietéticas".
+              Describe el formulario que necesitas.
             </p>
             <textarea
               value={aiPrompt}

@@ -12,7 +12,7 @@ export const ResponseViewer: React.FC<ResponseViewerProps> = ({ form, onBack }) 
   const [responses, setResponses] = useState<FormResponse[]>([]);
 
   useEffect(() => {
-    const data = storageService.getResponsesByFormId(form.id);
+    const data = storageService.getResponsesByFormIdLocal(form.id);
     // Sort by date descending
     setResponses(data.sort((a, b) => b.submittedAt - a.submittedAt));
   }, [form.id]);

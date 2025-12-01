@@ -9,7 +9,6 @@ import { FormSchema } from './types';
 import { LogOutIcon } from './components/ui/Icons';
 import { decodeFormFromUrl } from './utils';
 
-// Routing state
 type ViewState = 'login' | 'dashboard' | 'builder' | 'responses' | 'client';
 
 function App() {
@@ -19,6 +18,7 @@ function App() {
   const [currentForm, setCurrentForm] = useState<FormSchema | null>(null);
   const [isPublicView, setIsPublicView] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isLoadingForms, setIsLoadingForms] = useState(false);
 
   useEffect(() => {
     // 1. Check for Shared URL (?data=...)
@@ -43,14 +43,21 @@ function App() {
     if (session === 'true') {
       setIsLoggedIn(true);
       setView('dashboard');
-      refreshForms();
+      loadFormsFromCloud();
     }
   }, []);
+
+  const loadFormsFromCloud = async () => {
+    setIsLoadingForms(true);
+    const data = await storageService.fetchForms();
+    setForms(data);
+    setIsLoadingForms(false);
+  };
 
   const handleLogin = () => {
     localStorage.setItem('novaform_session', 'true');
     setIsLoggedIn(true);
-    refreshForms();
+    loadFormsFromCloud();
     setView('dashboard');
   };
 
@@ -58,10 +65,6 @@ function App() {
     localStorage.removeItem('novaform_session');
     setIsLoggedIn(false);
     setView('login');
-  };
-
-  const refreshForms = () => {
-    setForms(storageService.getForms());
   };
 
   const handleCreate = () => {
@@ -74,23 +77,26 @@ function App() {
     setView('builder');
   };
 
-  const handleDelete = (id: string) => {
-    if (window.confirm('¿Estás seguro de que deseas eliminar este formulario? Se borrarán también las respuestas asociadas.')) {
-      storageService.deleteForm(id);
-      refreshForms();
+  const handleDelete = async (id: string) => {
+    if (window.confirm('¿Estás seguro de que deseas eliminar este formulario de la Base de Datos?')) {
+      setIsLoadingForms(true);
+      await storageService.deleteForm(id);
+      await loadFormsFromCloud();
     }
   };
 
-  const handleToggleStatus = (form: FormSchema) => {
+  const handleToggleStatus = async (form: FormSchema) => {
     const updated = { ...form, isActive: !form.isActive };
-    storageService.saveForm(updated);
-    refreshForms();
+    setIsLoadingForms(true);
+    await storageService.saveForm(updated);
+    await loadFormsFromCloud();
   };
 
-  const handleSaveForm = (form: FormSchema) => {
-    storageService.saveForm(form);
-    refreshForms();
-    setView('dashboard');
+  const handleSaveForm = async (form: FormSchema) => {
+    setIsLoadingForms(true);
+    setView('dashboard'); // Switch immediately to show loading
+    await storageService.saveForm(form);
+    await loadFormsFromCloud();
   };
 
   const handleViewResponses = (form: FormSchema) => {
@@ -105,7 +111,6 @@ function App() {
 
   // --- RENDERING ---
 
-  // 0. Error View
   if (error) {
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
@@ -126,21 +131,16 @@ function App() {
     );
   }
 
-  // 1. Public View (No Login required)
   if (isPublicView && currentForm) {
     return <FormRenderer form={currentForm} />;
   }
 
-  // 2. Login View
   if (!isLoggedIn && view === 'login') {
     return <Login onLogin={handleLogin} />;
   }
 
-  // 3. Admin Dashboard
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 font-sans">
-      
-      {/* Top Bar */}
       <nav className="bg-white border-b border-gray-200 sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
@@ -162,11 +162,11 @@ function App() {
         </div>
       </nav>
 
-      {/* Main Content Area */}
       <main>
         {view === 'dashboard' && (
           <Dashboard 
             forms={forms}
+            isLoading={isLoadingForms}
             onCreate={handleCreate}
             onEdit={handleEdit}
             onDelete={handleDelete}
@@ -191,7 +191,6 @@ function App() {
           />
         )}
 
-        {/* Admin Preview Mode (Allows Back button) */}
         {view === 'client' && currentForm && (
           <FormRenderer 
             form={currentForm}

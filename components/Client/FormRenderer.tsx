@@ -5,10 +5,9 @@ import { storageService } from '../../services/storageService';
 
 interface FormRendererProps {
   form: FormSchema;
-  onBack?: () => void; // Optional now, since public link has nowhere to go back to
+  onBack?: () => void;
 }
 
-// URL DE RESPALDO: Si el formulario no trae URL, se usa esta obligatoriamente.
 const SYSTEM_DEFAULT_SHEET_URL = "https://script.google.com/macros/s/AKfycbyQscuJzzO-2lQQiTwuNTL0-LrCQ-82LcVa8npwaK7AuG7LJa4sCLqJKSmL5qDZG851/exec";
 
 export const FormRenderer: React.FC<FormRendererProps> = ({ form, onBack }) => {
@@ -19,7 +18,6 @@ export const FormRenderer: React.FC<FormRendererProps> = ({ form, onBack }) => {
 
   const handleInputChange = (fieldId: string, value: any) => {
     setAnswers(prev => ({ ...prev, [fieldId]: value }));
-    // Clear error on change
     if (errors[fieldId]) {
       const newErrors = { ...errors };
       delete newErrors[fieldId];
@@ -68,38 +66,28 @@ export const FormRenderer: React.FC<FormRendererProps> = ({ form, onBack }) => {
 
     setIsSubmitting(true);
 
-    const responseData = {
-        ...answers,
-        formTitle: form.title
-    };
-
-    // Replace Field IDs with readable labels for Google Sheets
     const cleanData: Record<string, any> = {};
     form.fields.forEach(f => {
-        // If the answer exists, map it to the Label. If not, empty string.
         cleanData[f.label] = answers[f.id] || ""; 
     });
 
     try {
-        // 1. Save Locally (Backup)
         const localResponse: FormResponse = {
             id: Math.random().toString(36).substr(2, 9),
             formId: form.id,
             answers,
             submittedAt: Date.now()
         };
-        storageService.saveResponse(localResponse);
+        storageService.saveResponseLocal(localResponse);
 
-        // 2. Send to Google Sheets
-        // Prioridad: URL específica del form > URL del sistema por defecto
         const targetUrl = form.googleSheetUrl || SYSTEM_DEFAULT_SHEET_URL;
 
         if (targetUrl) {
             await fetch(targetUrl, {
                 method: 'POST',
-                mode: 'no-cors', // Important for Google Apps Script
+                mode: 'no-cors',
                 headers: {
-                    'Content-Type': 'text/plain', // 'text/plain' ensures no preflight OPTIONS check
+                    'Content-Type': 'text/plain',
                 },
                 body: JSON.stringify(cleanData)
             });
@@ -108,44 +96,30 @@ export const FormRenderer: React.FC<FormRendererProps> = ({ form, onBack }) => {
         setIsSubmitted(true);
     } catch (error) {
         console.error("Submission error", error);
-        // Even if fetch fails (network), we show success if local save worked, 
-        // but user expects cloud save.
-        // For GAS 'no-cors', we can't really catch specific script errors, 
-        // so we assume success if the network request went out.
         setIsSubmitted(true);
     } finally {
         setIsSubmitting(false);
     }
   };
 
-  // Helper to interpolate variables in the Thank You message
   const getInterpolatedMessage = () => {
     let message = form.thankYouScreen.message;
-    
-    // Iterate over fields and replace @Label with the actual answer
     form.fields.forEach(field => {
         const answer = answers[field.id];
         const displayValue = answer !== undefined && answer !== null ? String(answer) : '';
-        // Escape label for regex just in case, though basic labels are usually safe
-        // We handle simple replacement of @Label
         const regex = new RegExp(`@${field.label}`, 'gi');
         message = message.replace(regex, `<span class="font-semibold text-gray-900">${displayValue}</span>`);
     });
-    
     return message.replace(/\n/g, '<br/>');
   };
 
   if (isSubmitted) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-        {/* Card Container simulating a Receipt/Booking Confirmation */}
         <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden relative">
-          
-          {/* Top Decorative Strip */}
           <div className="h-3 bg-[#043200] w-full"></div>
 
           <div className="p-8 text-center">
-            {/* Success Icon with Pulse Effect */}
             <div className="relative w-20 h-20 mx-auto mb-6">
                 <div className="absolute inset-0 bg-green-100 rounded-full animate-ping opacity-75"></div>
                 <div className="relative bg-green-100 rounded-full w-20 h-20 flex items-center justify-center">
@@ -159,7 +133,6 @@ export const FormRenderer: React.FC<FormRendererProps> = ({ form, onBack }) => {
                {new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
             </div>
 
-            {/* Receipt Content Box */}
             <div className="bg-gray-50 rounded-xl p-6 mb-8 border border-gray-100 text-left">
                 <div 
                     className="text-gray-600 text-sm leading-relaxed"
@@ -183,8 +156,6 @@ export const FormRenderer: React.FC<FormRendererProps> = ({ form, onBack }) => {
              )}
             </div>
           </div>
-
-          {/* Bottom Receipt Zig-Zag Decoration (Visual trick using css gradient) */}
           <div className="h-4 w-full bg-white relative" style={{
             backgroundImage: "linear-gradient(135deg, #f3f4f6 25%, transparent 25%), linear-gradient(225deg, #f3f4f6 25%, transparent 25%)",
             backgroundPosition: "0 0",
@@ -206,7 +177,6 @@ export const FormRenderer: React.FC<FormRendererProps> = ({ form, onBack }) => {
         )}
 
         <div className="bg-white shadow-xl rounded-2xl overflow-hidden">
-          {/* Top colored Bar */}
           <div className="bg-[#043200] h-3 w-full"></div>
           
           <div className="px-8 py-10">
