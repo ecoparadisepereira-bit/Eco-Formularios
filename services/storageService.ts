@@ -8,7 +8,6 @@ export const storageService = {
   
   fetchForms: async (): Promise<FormSchema[]> => {
     try {
-      // Usamos text/plain para evitar Preflight CORS complejo
       const response = await fetch(MASTER_SHEET_URL, {
         method: 'POST',
         headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -26,7 +25,7 @@ export const storageService = {
     try {
       await fetch(MASTER_SHEET_URL, {
         method: 'POST',
-        mode: 'no-cors', // Escribir sin esperar respuesta legible (CORS opaco)
+        mode: 'no-cors',
         headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({ 
           action: 'save_form', 
@@ -63,17 +62,23 @@ export const storageService = {
        const targetUrl = sheetUrl && sheetUrl.length > 10 ? sheetUrl : MASTER_SHEET_URL;
 
        // IMPORTANTE: NO enviamos formId en el cuerpo para pedir TODAS las filas.
-       // Filtraremos en el cliente (frontend) para ser más tolerantes a errores de IDs.
        const response = await fetch(targetUrl, {
         method: 'POST',
         headers: { "Content-Type": "text/plain;charset=utf-8" },
         body: JSON.stringify({ 
             action: 'get_responses'
-            // formId: formId  <-- COMENTADO PARA TRAER TODO
         })
       });
+      
       const rawData = await response.json();
       
+      // DIAGNÓSTICO: Si recibimos { result: "success" } pero no un array, 
+      // significa que el script ejecutó la lógica de GUARDAR (fallback) en lugar de LEER.
+      // Esto pasa cuando el usuario no ha desplegado la NUEVA versión del script.
+      if (!Array.isArray(rawData) && rawData && rawData.result === 'success') {
+          throw new Error("SCRIPT_OUTDATED");
+      }
+
       // Mapear datos planos del Excel a estructura FormResponse
       if (Array.isArray(rawData)) {
         return rawData.map((row: any) => ({
@@ -84,15 +89,18 @@ export const storageService = {
         }));
       }
       return [];
-    } catch (e) {
+    } catch (e: any) {
         console.error("Error fetching responses from cloud", e);
+        if (e.message === "SCRIPT_OUTDATED") {
+            throw e;
+        }
         return [];
     }
   },
 
   // Método legacy local (ya no se usa como fuente principal)
   saveResponseLocal: (response: FormResponse): void => {
-     // No-op o backup temporal
+     // No-op
   },
   
   getResponsesByFormIdLocal: (formId: string): FormResponse[] => {
