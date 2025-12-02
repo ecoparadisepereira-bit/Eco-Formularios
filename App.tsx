@@ -6,7 +6,7 @@ import { Login } from './components/Admin/Login';
 import { FormRenderer } from './components/Client/FormRenderer';
 import { storageService } from './services/storageService';
 import { FormSchema } from './types';
-import { LogOutIcon } from './components/ui/Icons';
+import { LogOutIcon, SparklesIcon, TableIcon, PlusIcon } from './components/ui/Icons';
 import { decodeFormFromUrl } from './utils';
 
 type ViewState = 'login' | 'dashboard' | 'builder' | 'responses' | 'client';
@@ -24,14 +24,14 @@ function App() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     
-    // 1. Check for Short ID (?id=...) - NUEVA LÓGICA
+    // Check for Short ID (?id=...)
     const shortId = params.get('id');
     if (shortId) {
         loadPublicFormById(shortId);
         return;
     }
 
-    // 2. Check for Legacy Shared URL (?data=...)
+    // Check for Legacy Shared URL (?data=...)
     const sharedData = params.get('data');
     if (sharedData) {
         const sharedForm = decodeFormFromUrl(sharedData);
@@ -46,7 +46,7 @@ function App() {
         }
     }
 
-    // 3. If not shared, check Admin Session
+    // Check Admin Session
     const session = localStorage.getItem('novaform_session');
     if (session === 'true') {
       setIsLoggedIn(true);
@@ -139,26 +139,26 @@ function App() {
 
   if (loadingPublicForm) {
       return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
-            <div className="w-12 h-12 border-4 border-green-200 border-t-[#043200] rounded-full animate-spin mb-4"></div>
-            <h2 className="text-xl font-bold text-[#043200]">Cargando Formulario...</h2>
-            <p className="text-gray-500">Conectando con Ecoparadise Cloud</p>
+        <div className="min-h-screen flex flex-col items-center justify-center bg-dark-900 text-white">
+            <div className="w-12 h-12 border-4 border-dark-700 border-t-eco-400 rounded-full animate-spin mb-4"></div>
+            <h2 className="text-xl font-bold text-eco-400">Cargando Formulario...</h2>
+            <p className="text-dark-muted">Conectando con Ecoparadise Cloud</p>
         </div>
       );
   }
 
   if (error) {
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-            <div className="bg-white p-8 rounded-2xl shadow-xl text-center max-w-md border border-gray-100">
-                <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+        <div className="min-h-screen flex items-center justify-center bg-dark-900 p-4">
+            <div className="bg-dark-800 p-8 rounded-2xl border border-dark-700 text-center max-w-md shadow-card">
+                <div className="w-16 h-16 bg-red-900/20 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20">
                     <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
                 </div>
-                <h2 className="text-xl font-bold text-gray-900 mb-2">Error</h2>
-                <p className="text-gray-500">{error}</p>
+                <h2 className="text-xl font-bold text-white mb-2">Error</h2>
+                <p className="text-dark-muted">{error}</p>
                 <button 
                     onClick={() => { setError(null); window.history.replaceState({}, '', window.location.pathname); window.location.reload(); }} 
-                    className="mt-6 px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
+                    className="mt-6 px-6 py-2 bg-eco-500 text-white rounded-lg hover:bg-eco-600 transition-colors"
                 >
                     Volver al Inicio
                 </button>
@@ -176,63 +176,128 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 font-sans">
-      <nav className="bg-white border-b border-gray-200 sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center gap-2 cursor-pointer" onClick={() => setView('dashboard')}>
-              <div className="w-8 h-8 bg-[#043200] rounded-lg flex items-center justify-center text-white font-bold shadow-md shadow-green-900/20">E</div>
-              <span className="font-bold text-xl tracking-tight text-[#043200]">Formularios Ecoparadise</span>
+    <div className="flex h-screen bg-dark-900 text-dark-text font-sans overflow-hidden">
+      
+      {/* SIDEBAR NAVIGATION */}
+      <aside className="w-64 bg-eco-950 border-r border-dark-800 flex-shrink-0 flex flex-col relative z-20">
+        <div className="p-6 flex items-center gap-3">
+            <div className="w-10 h-10 bg-eco-500 rounded-xl flex items-center justify-center text-white shadow-glow">
+                <SparklesIcon className="w-6 h-6" />
             </div>
-            <div className="flex items-center gap-4">
-                <span className="text-xs font-semibold px-3 py-1 bg-green-50 text-green-800 rounded-full border border-green-100">Administrador</span>
+            <div>
+                <h1 className="font-bold text-lg text-white leading-tight">Ecoparadise</h1>
+                <p className="text-xs text-eco-400 font-medium">Admin Panel</p>
+            </div>
+        </div>
+
+        <nav className="flex-1 px-4 space-y-2 mt-4">
+            <button 
+                onClick={() => setView('dashboard')}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${view === 'dashboard' ? 'bg-eco-500/10 text-eco-400 border border-eco-500/20' : 'text-dark-muted hover:text-white hover:bg-dark-800'}`}
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+                <span className="font-medium">Dashboard</span>
+            </button>
+            
+            <button 
+                onClick={handleCreate}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${view === 'builder' && !currentForm ? 'bg-eco-500/10 text-eco-400 border border-eco-500/20' : 'text-dark-muted hover:text-white hover:bg-dark-800'}`}
+            >
+                <PlusIcon className="w-5 h-5" />
+                <span className="font-medium">Crear Formulario</span>
+            </button>
+
+            <div className="pt-4 mt-4 border-t border-dark-800">
+                <p className="px-4 text-xs font-bold text-dark-muted uppercase mb-2 tracking-wider">Formularios Activos</p>
+                {forms.slice(0, 4).map(f => (
+                    <button 
+                        key={f.id}
+                        onClick={() => handleEdit(f)}
+                        className="w-full flex items-center gap-3 px-4 py-2 text-sm text-dark-muted hover:text-white rounded-lg hover:bg-dark-800 transition-colors truncate"
+                    >
+                        <span className="w-2 h-2 rounded-full bg-eco-500 flex-shrink-0" />
+                        <span className="truncate">{f.title}</span>
+                    </button>
+                ))}
+            </div>
+        </nav>
+
+        <div className="p-4 border-t border-dark-800">
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-dark-800 border border-dark-700">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-eco-600 to-eco-400 flex items-center justify-center text-white font-bold">
+                    AD
+                </div>
+                <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-white truncate">Admin User</p>
+                    <p className="text-xs text-dark-muted truncate">admin@ecoparadise.com</p>
+                </div>
                 <button 
                   onClick={handleLogout}
-                  className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  className="p-2 text-dark-muted hover:text-red-400 transition-colors"
                   title="Cerrar Sesión"
                 >
                   <LogOutIcon className="w-5 h-5" />
                 </button>
             </div>
-          </div>
         </div>
-      </nav>
+      </aside>
 
-      <main>
-        {view === 'dashboard' && (
-          <Dashboard 
-            forms={forms}
-            isLoading={isLoadingForms}
-            onCreate={handleCreate}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            onViewClient={handleViewClient}
-            onViewResponses={handleViewResponses}
-            onToggleStatus={handleToggleStatus}
-          />
-        )}
+      {/* MAIN CONTENT AREA */}
+      <main className="flex-1 overflow-auto relative">
+        {/* Top Header Mockup for "Search" look from image */}
+        <header className="sticky top-0 z-30 bg-dark-900/80 backdrop-blur-md border-b border-dark-800 px-8 py-4 flex justify-between items-center">
+             <div className="flex items-center gap-4 text-dark-muted">
+                 <span className="text-sm">Ecoparadise</span>
+                 <span>/</span>
+                 <span className="text-white font-medium">{view === 'dashboard' ? 'Panel Principal' : view === 'builder' ? 'Editor' : 'Respuestas'}</span>
+             </div>
+             <div className="flex items-center gap-4">
+                 <div className="bg-dark-800 border border-dark-700 rounded-full px-4 py-2 flex items-center gap-2 text-sm text-dark-muted w-64">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/></svg>
+                    <span>Buscar...</span>
+                 </div>
+                 <button className="w-10 h-10 rounded-full bg-dark-800 border border-dark-700 flex items-center justify-center text-dark-muted hover:text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+                 </button>
+             </div>
+        </header>
 
-        {view === 'builder' && (
-          <FormBuilder 
-            initialData={currentForm}
-            onSave={handleSaveForm}
-            onCancel={() => setView('dashboard')}
-          />
-        )}
+        <div className="p-8">
+            {view === 'dashboard' && (
+            <Dashboard 
+                forms={forms}
+                isLoading={isLoadingForms}
+                onCreate={handleCreate}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                onViewClient={handleViewClient}
+                onViewResponses={handleViewResponses}
+                onToggleStatus={handleToggleStatus}
+            />
+            )}
 
-        {view === 'responses' && currentForm && (
-          <ResponseViewer
-            form={currentForm}
-            onBack={() => setView('dashboard')}
-          />
-        )}
+            {view === 'builder' && (
+            <FormBuilder 
+                initialData={currentForm}
+                onSave={handleSaveForm}
+                onCancel={() => setView('dashboard')}
+            />
+            )}
 
-        {view === 'client' && currentForm && (
-          <FormRenderer 
-            form={currentForm}
-            onBack={() => setView('dashboard')}
-          />
-        )}
+            {view === 'responses' && currentForm && (
+            <ResponseViewer
+                form={currentForm}
+                onBack={() => setView('dashboard')}
+            />
+            )}
+
+            {view === 'client' && currentForm && (
+            <FormRenderer 
+                form={currentForm}
+                onBack={() => setView('dashboard')}
+            />
+            )}
+        </div>
       </main>
     </div>
   );

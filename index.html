@@ -5,26 +5,38 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Formularios Ecoparadise</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script>
       tailwind.config = {
+        darkMode: 'class',
         theme: {
           extend: {
             fontFamily: {
-              sans: ['Inter', 'sans-serif'],
+              sans: ['"Plus Jakarta Sans"', 'sans-serif'],
             },
             colors: {
-              // Custom brand color palette based on #043200
+              // Modern Dark Theme Palette
+              dark: {
+                950: '#050505', // Super Dark BG
+                900: '#0B0E14', // Main Canvas
+                800: '#151A25', // Card Surface
+                700: '#1F2937', // Borders
+                600: '#374151', // Lighter Borders
+                text: '#E2E8F0', // Main Text
+                muted: '#94A3B8', // Muted Text
+              },
+              // Eco Brand Adapted for Dark Mode
               eco: {
-                50: '#f2fdf4',
-                100: '#dcfce7',
-                500: '#22c55e',
-                600: '#16a34a',
-                700: '#15803d',
-                800: '#166534',
-                900: '#043200', // The Primary Brand Color
+                400: '#4ade80', // Neon Green (Accents)
+                500: '#22c55e', // Primary Green
+                600: '#16a34a', // Hover Green
+                900: '#043200', // Brand Identity (Sidebar/Deep BG)
                 950: '#022c00',
               }
+            },
+            boxShadow: {
+              'glow': '0 0 20px rgba(74, 222, 128, 0.15)',
+              'card': '0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.15)',
             }
           }
         }
@@ -32,22 +44,33 @@
     </script>
     <style>
       body {
-        font-family: 'Inter', sans-serif;
-        background-color: #f8fafc;
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        background-color: #0B0E14; /* dark-900 */
+        color: #E2E8F0;
       }
-      /* Custom scrollbar for cleaner look */
+      /* Modern Scrollbar */
       ::-webkit-scrollbar {
-        width: 8px;
+        width: 6px;
+        height: 6px;
       }
       ::-webkit-scrollbar-track {
-        background: transparent;
+        background: #0B0E14;
       }
       ::-webkit-scrollbar-thumb {
-        background: #cbd5e1;
-        border-radius: 4px;
+        background: #374151;
+        border-radius: 10px;
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: #94a3b8;
+        background: #4ade80;
+      }
+      
+      /* Inputs Autocomplete fix for dark mode */
+      input:-webkit-autofill,
+      input:-webkit-autofill:hover, 
+      input:-webkit-autofill:focus, 
+      input:-webkit-autofill:active{
+          -webkit-box-shadow: 0 0 0 30px #151A25 inset !important;
+          -webkit-text-fill-color: white !important;
       }
     </style>
   <script type="importmap">

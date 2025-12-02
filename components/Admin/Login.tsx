@@ -12,64 +12,67 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Simulación de autenticación simple
-    // En un caso real, esto validaría contra un backend
     if (email === 'admin' && password === 'admin') {
       onLogin();
     } else {
-      setError('Credenciales incorrectas (Prueba con: admin / admin)');
+      setError('Credenciales incorrectas');
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center items-center p-4">
-      <div className="mb-8 flex flex-col items-center">
-        <div className="w-12 h-12 bg-[#043200] rounded-xl flex items-center justify-center text-white mb-4 shadow-lg shadow-green-900/20">
-           <SparklesIcon className="w-6 h-6" />
+    <div className="min-h-screen bg-dark-900 flex flex-col justify-center items-center p-4 relative overflow-hidden">
+      {/* Background Blobs */}
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-eco-500/10 rounded-full blur-[100px] pointer-events-none"></div>
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-500/10 rounded-full blur-[100px] pointer-events-none"></div>
+
+      <div className="mb-8 flex flex-col items-center relative z-10">
+        <div className="w-16 h-16 bg-gradient-to-tr from-eco-600 to-eco-400 rounded-2xl flex items-center justify-center text-dark-900 mb-6 shadow-glow">
+           <SparklesIcon className="w-8 h-8" />
         </div>
-        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Formularios Ecoparadise</h1>
-        <p className="text-gray-500">Acceso Administrativo</p>
+        <h1 className="text-4xl font-bold text-white tracking-tight text-center">Ecoparadise</h1>
+        <p className="text-dark-muted mt-2">Plataforma de Gestión</p>
       </div>
 
-      <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-gray-100">
+      <div className="bg-dark-800/80 backdrop-blur-xl p-8 rounded-3xl shadow-2xl w-full max-w-sm border border-dark-700 relative z-10">
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Usuario</label>
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-dark-muted uppercase tracking-wider">Usuario</label>
             <input 
               type="text" 
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#043200] focus:ring-4 focus:ring-green-900/10 outline-none transition-all"
+              className="w-full px-4 py-3 bg-dark-900 border border-dark-600 rounded-xl text-white focus:border-eco-500 focus:ring-1 focus:ring-eco-500 outline-none transition-all placeholder-dark-600"
               placeholder="admin"
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-dark-muted uppercase tracking-wider">Contraseña</label>
             <input 
               type="password" 
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#043200] focus:ring-4 focus:ring-green-900/10 outline-none transition-all"
+              className="w-full px-4 py-3 bg-dark-900 border border-dark-600 rounded-xl text-white focus:border-eco-500 focus:ring-1 focus:ring-eco-500 outline-none transition-all placeholder-dark-600"
               placeholder="•••••"
             />
           </div>
 
           {error && (
-            <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg font-medium">
+            <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-lg text-center font-medium">
               {error}
             </div>
           )}
 
           <button 
             type="submit" 
-            className="w-full py-3 bg-[#043200] hover:bg-[#064e00] text-white font-bold rounded-xl transition-colors shadow-lg shadow-green-900/20"
+            className="w-full py-3.5 bg-eco-500 hover:bg-eco-400 text-dark-900 font-bold rounded-xl transition-all shadow-glow hover:translate-y-[-2px]"
           >
-            Ingresar al Dashboard
+            Iniciar Sesión
           </button>
         </form>
-        <div className="mt-6 text-center text-xs text-gray-400">
-            Cuentas de usuario protegidas por simulación segura.
-        </div>
+      </div>
+      
+      <div className="mt-8 text-dark-muted text-sm relative z-10">
+         Powered by <span className="text-white font-semibold">Gemini AI</span>
       </div>
     </div>
   );
