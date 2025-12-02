@@ -6,7 +6,7 @@ import { Login } from './components/Admin/Login';
 import { FormRenderer } from './components/Client/FormRenderer';
 import { storageService } from './services/storageService';
 import { FormSchema } from './types';
-import { LogOutIcon, SparklesIcon, TableIcon, PlusIcon } from './components/ui/Icons';
+import { LogOutIcon, SparklesIcon, TableIcon, PlusIcon, ParrotLogo } from './components/ui/Icons';
 import { decodeFormFromUrl } from './utils';
 
 type ViewState = 'login' | 'dashboard' | 'builder' | 'responses' | 'client';
@@ -181,8 +181,8 @@ function App() {
       {/* SIDEBAR NAVIGATION */}
       <aside className="w-64 bg-eco-950 border-r border-dark-800 flex-shrink-0 flex flex-col relative z-20">
         <div className="p-6 flex items-center gap-3">
-            <div className="w-10 h-10 bg-eco-500 rounded-xl flex items-center justify-center text-white shadow-glow">
-                <SparklesIcon className="w-6 h-6" />
+            <div className="w-10 h-10 flex items-center justify-center">
+                <ParrotLogo className="w-10 h-10 drop-shadow-lg" />
             </div>
             <div>
                 <h1 className="font-bold text-lg text-white leading-tight">Ecoparadise</h1>

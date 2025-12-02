@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { SparklesIcon } from '../ui/Icons';
+import { ParrotLogo } from '../ui/Icons';
 
 interface LoginProps {
   onLogin: () => void;
@@ -26,8 +26,8 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-500/10 rounded-full blur-[100px] pointer-events-none"></div>
 
       <div className="mb-8 flex flex-col items-center relative z-10">
-        <div className="w-16 h-16 bg-gradient-to-tr from-eco-600 to-eco-400 rounded-2xl flex items-center justify-center text-dark-900 mb-6 shadow-glow">
-           <SparklesIcon className="w-8 h-8" />
+        <div className="w-24 h-24 bg-white/5 rounded-full flex items-center justify-center text-dark-900 mb-6 shadow-glow border border-white/10">
+           <ParrotLogo className="w-16 h-16 drop-shadow-xl" />
         </div>
         <h1 className="text-4xl font-bold text-white tracking-tight text-center">Ecoparadise</h1>
         <p className="text-dark-muted mt-2">Plataforma de Gestión</p>
