@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FormSchema, FieldType, FormField } from '../../types';
-import { PlusIcon, TrashIcon, SparklesIcon, GripVerticalIcon, ArrowLeftIcon } from '../ui/Icons';
+import { PlusIcon, TrashIcon, SparklesIcon, GripVerticalIcon, ArrowLeftIcon, CalendarIcon, ClockIcon, ListCheckIcon } from '../ui/Icons';
 import { generateFormSchema } from '../../services/geminiService';
 
 interface FormBuilderProps {
@@ -60,7 +60,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
       type,
       label: 'Nuevo Campo',
       required: false,
-      options: type === FieldType.SINGLE_SELECT ? ['Opción 1', 'Opción 2'] : undefined,
+      options: (type === FieldType.SINGLE_SELECT || type === FieldType.CHECKBOX) ? ['Opción 1', 'Opción 2'] : undefined,
     };
     setFields([...fields, newField]);
   };
@@ -160,11 +160,24 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
 
             {activeTab === 'fields' ? (
               <div className="grid grid-cols-1 gap-2">
-                <p className="text-xs text-gray-400 font-medium uppercase mb-2 tracking-wider">Añadir Campo</p>
+                <p className="text-xs text-gray-400 font-medium uppercase mb-2 tracking-wider">Básicos</p>
                 <button onClick={() => handleAddField(FieldType.SHORT_TEXT)} className="text-left px-4 py-3 bg-gray-50 hover:bg-green-50 hover:text-green-700 rounded-lg text-sm font-medium transition-colors border border-transparent hover:border-green-200">Texto Corto</button>
-                <button onClick={() => handleAddField(FieldType.LONG_TEXT)} className="text-left px-4 py-3 bg-gray-50 hover:bg-green-50 hover:text-green-700 rounded-lg text-sm font-medium transition-colors border border-transparent hover:border-green-200">Texto Largo (Párrafo)</button>
+                <button onClick={() => handleAddField(FieldType.LONG_TEXT)} className="text-left px-4 py-3 bg-gray-50 hover:bg-green-50 hover:text-green-700 rounded-lg text-sm font-medium transition-colors border border-transparent hover:border-green-200">Texto Largo</button>
                 <button onClick={() => handleAddField(FieldType.NUMBER)} className="text-left px-4 py-3 bg-gray-50 hover:bg-green-50 hover:text-green-700 rounded-lg text-sm font-medium transition-colors border border-transparent hover:border-green-200">Número</button>
+                
+                <p className="text-xs text-gray-400 font-medium uppercase mb-2 mt-4 tracking-wider">Opciones</p>
                 <button onClick={() => handleAddField(FieldType.SINGLE_SELECT)} className="text-left px-4 py-3 bg-gray-50 hover:bg-green-50 hover:text-green-700 rounded-lg text-sm font-medium transition-colors border border-transparent hover:border-green-200">Selección Única</button>
+                <button onClick={() => handleAddField(FieldType.CHECKBOX)} className="text-left px-4 py-3 bg-gray-50 hover:bg-green-50 hover:text-green-700 rounded-lg text-sm font-medium transition-colors border border-transparent hover:border-green-200 flex items-center gap-2">
+                     <ListCheckIcon className="w-4 h-4 opacity-60" /> Casillas (Multiple)
+                </button>
+
+                <p className="text-xs text-gray-400 font-medium uppercase mb-2 mt-4 tracking-wider">Especiales</p>
+                <button onClick={() => handleAddField(FieldType.DATE)} className="text-left px-4 py-3 bg-gray-50 hover:bg-green-50 hover:text-green-700 rounded-lg text-sm font-medium transition-colors border border-transparent hover:border-green-200 flex items-center gap-2">
+                    <CalendarIcon className="w-4 h-4 opacity-60" /> Fecha
+                </button>
+                <button onClick={() => handleAddField(FieldType.TIME)} className="text-left px-4 py-3 bg-gray-50 hover:bg-green-50 hover:text-green-700 rounded-lg text-sm font-medium transition-colors border border-transparent hover:border-green-200 flex items-center gap-2">
+                    <ClockIcon className="w-4 h-4 opacity-60" /> Hora
+                </button>
                 <button onClick={() => handleAddField(FieldType.IMAGE_UPLOAD)} className="text-left px-4 py-3 bg-gray-50 hover:bg-green-50 hover:text-green-700 rounded-lg text-sm font-medium transition-colors border border-transparent hover:border-green-200">Subida de Imagen</button>
               </div>
             ) : (
@@ -297,7 +310,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
                     </div>
                     <div className="w-32">
                        <label className="block text-xs uppercase text-gray-400 font-bold mb-1 tracking-wider">Tipo</label>
-                       <div className="text-sm font-medium text-gray-600 py-1 bg-gray-100 rounded px-2">{field.type.replace('_', ' ')}</div>
+                       <div className="text-sm font-medium text-gray-600 py-1 bg-gray-100 rounded px-2">{field.type.replace(/_/g, ' ')}</div>
                     </div>
                   </div>
 
@@ -332,7 +345,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
                       </div>
                     )}
 
-                    {field.type === FieldType.SINGLE_SELECT && (
+                    {(field.type === FieldType.SINGLE_SELECT || field.type === FieldType.CHECKBOX) && (
                       <div className="w-full mt-2 bg-gray-50 p-3 rounded-lg">
                         <p className="text-xs text-gray-500 mb-2 font-medium">Opciones (separadas por coma)</p>
                         <input 

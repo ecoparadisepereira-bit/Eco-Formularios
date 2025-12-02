@@ -4,6 +4,9 @@ export enum FieldType {
   LONG_TEXT = 'long_text',
   NUMBER = 'number',
   SINGLE_SELECT = 'single_select',
+  CHECKBOX = 'checkbox', // NEW: Multi-select
+  DATE = 'date',         // NEW
+  TIME = 'time',         // NEW
   IMAGE_UPLOAD = 'image_upload',
 }
 
@@ -22,7 +25,7 @@ export interface FormField {
   label: string;
   placeholder?: string;
   required: boolean;
-  options?: string[]; // For Select
+  options?: string[]; // For Select and Checkbox
   validation?: ValidationRules;
 }
 
@@ -51,5 +54,5 @@ export interface FormResponse {
   id: string;
   formId: string;
   submittedAt: number;
-  answers: Record<string, string | number | null>; // Field ID -> Value
+  answers: Record<string, string | number | string[] | null>; // Field ID -> Value
 }

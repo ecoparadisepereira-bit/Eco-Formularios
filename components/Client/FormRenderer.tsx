@@ -25,6 +25,24 @@ export const FormRenderer: React.FC<FormRendererProps> = ({ form, onBack }) => {
     }
   };
 
+  const handleCheckboxChange = (fieldId: string, option: string, isChecked: boolean) => {
+      setAnswers(prev => {
+          const currentValues = (prev[fieldId] as string[]) || [];
+          let newValues = [];
+          if (isChecked) {
+              newValues = [...currentValues, option];
+          } else {
+              newValues = currentValues.filter(v => v !== option);
+          }
+          return { ...prev, [fieldId]: newValues };
+      });
+      if (errors[fieldId]) {
+        const newErrors = { ...errors };
+        delete newErrors[fieldId];
+        setErrors(newErrors);
+      }
+  };
+
   const handleFileChange = async (fieldId: string, event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -43,15 +61,21 @@ export const FormRenderer: React.FC<FormRendererProps> = ({ form, onBack }) => {
   const validate = () => {
     const newErrors: Record<string, string> = {};
     form.fields.forEach(field => {
-      if (field.required && !answers[field.id]) {
-        newErrors[field.id] = 'Este campo es obligatorio.';
+      const val = answers[field.id];
+      if (field.required) {
+          if (field.type === FieldType.CHECKBOX) {
+              if (!val || val.length === 0) newErrors[field.id] = 'Selecciona al menos una opción.';
+          } else {
+              if (!val) newErrors[field.id] = 'Este campo es obligatorio.';
+          }
       }
-      if (field.type === FieldType.NUMBER && answers[field.id]) {
-        const val = Number(answers[field.id]);
-        if (field.validation?.min !== undefined && val < field.validation.min) {
+      
+      if (field.type === FieldType.NUMBER && val) {
+        const numVal = Number(val);
+        if (field.validation?.min !== undefined && numVal < field.validation.min) {
             newErrors[field.id] = `El valor mínimo es ${field.validation.min}`;
         }
-        if (field.validation?.max !== undefined && val > field.validation.max) {
+        if (field.validation?.max !== undefined && numVal > field.validation.max) {
             newErrors[field.id] = `El valor máximo es ${field.validation.max}`;
         }
       }
@@ -73,7 +97,12 @@ export const FormRenderer: React.FC<FormRendererProps> = ({ form, onBack }) => {
     
     // Mapear respuestas usando la Etiqueta (Label) como clave para el Excel
     form.fields.forEach(f => {
-        cleanData[f.label] = answers[f.id] || ""; 
+        let val = answers[f.id];
+        // Convertir arrays (checkboxes) a string separado por comas para Excel
+        if (Array.isArray(val)) {
+            val = val.join(', ');
+        }
+        cleanData[f.label] = val || ""; 
     });
 
     try {
@@ -102,7 +131,8 @@ export const FormRenderer: React.FC<FormRendererProps> = ({ form, onBack }) => {
   const getInterpolatedMessage = () => {
     let message = form.thankYouScreen.message;
     form.fields.forEach(field => {
-        const answer = answers[field.id];
+        let answer = answers[field.id];
+        if (Array.isArray(answer)) answer = answer.join(', ');
         const displayValue = answer !== undefined && answer !== null ? String(answer) : '';
         const regex = new RegExp(`@${field.label}`, 'gi');
         message = message.replace(regex, `<span class="font-semibold text-gray-900">${displayValue}</span>`);
@@ -214,6 +244,22 @@ export const FormRenderer: React.FC<FormRendererProps> = ({ form, onBack }) => {
                     />
                   )}
 
+                  {field.type === FieldType.DATE && (
+                    <input 
+                      type="date"
+                      className={`w-full px-4 py-3 rounded-xl border ${errors[field.id] ? 'border-red-500 bg-red-50' : 'border-gray-200 focus:border-[#043200] focus:ring-4 focus:ring-green-900/10'} outline-none transition-all bg-white`}
+                      onChange={(e) => handleInputChange(field.id, e.target.value)}
+                    />
+                  )}
+
+                  {field.type === FieldType.TIME && (
+                    <input 
+                      type="time"
+                      className={`w-full px-4 py-3 rounded-xl border ${errors[field.id] ? 'border-red-500 bg-red-50' : 'border-gray-200 focus:border-[#043200] focus:ring-4 focus:ring-green-900/10'} outline-none transition-all bg-white`}
+                      onChange={(e) => handleInputChange(field.id, e.target.value)}
+                    />
+                  )}
+
                   {field.type === FieldType.SINGLE_SELECT && (
                     <div className="space-y-2">
                       {field.options?.map(opt => (
@@ -224,6 +270,23 @@ export const FormRenderer: React.FC<FormRendererProps> = ({ form, onBack }) => {
                             value={opt}
                             className="h-4 w-4 text-[#043200] focus:ring-[#043200] border-gray-300"
                             onChange={(e) => handleInputChange(field.id, e.target.value)}
+                          />
+                          <span className="ml-3 text-gray-700 font-medium">{opt}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+
+                  {field.type === FieldType.CHECKBOX && (
+                    <div className="space-y-2">
+                      {field.options?.map(opt => (
+                        <label key={opt} className="flex items-center p-3 border rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
+                          <input 
+                            type="checkbox" 
+                            name={field.id} 
+                            value={opt}
+                            className="h-4 w-4 text-[#043200] focus:ring-[#043200] border-gray-300 rounded"
+                            onChange={(e) => handleCheckboxChange(field.id, opt, e.target.checked)}
                           />
                           <span className="ml-3 text-gray-700 font-medium">{opt}</span>
                         </label>

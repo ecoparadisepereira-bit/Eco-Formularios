@@ -23,6 +23,9 @@ export const generateFormSchema = async (prompt: string): Promise<Partial<FormSc
     - long_text (Comments, Descriptions)
     - number (Age, Quantity, Ratings)
     - single_select (Categories, Options - MUST Provide options array)
+    - checkbox (Multiple selections - MUST Provide options array)
+    - date (Birthdays, Booking dates)
+    - time (Arrival times, Appointments)
     - image_upload (Photos, Documents)
 
     If the user doesn't specify details, infer reasonable defaults.
@@ -52,7 +55,10 @@ export const generateFormSchema = async (prompt: string): Promise<Partial<FormSc
                       'short_text', 
                       'long_text', 
                       'number', 
-                      'single_select', 
+                      'single_select',
+                      'checkbox',
+                      'date',
+                      'time',
                       'image_upload'
                     ] 
                   },
@@ -61,7 +67,7 @@ export const generateFormSchema = async (prompt: string): Promise<Partial<FormSc
                   options: { 
                     type: Type.ARRAY, 
                     items: { type: Type.STRING },
-                    description: "Required only for single_select"
+                    description: "Required only for single_select and checkbox"
                   }
                 },
                 required: ['label', 'type', 'required']
