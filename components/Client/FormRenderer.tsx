@@ -10,11 +10,16 @@ interface FormRendererProps {
 
 const SYSTEM_DEFAULT_SHEET_URL = "https://script.google.com/macros/s/AKfycbyQscuJzzO-2lQQiTwuNTL0-LrCQ-82LcVa8npwaK7AuG7LJa4sCLqJKSmL5qDZG851/exec";
 
+// Imagen de fondo por defecto (Hotel Nocturno/Piscina Luxury)
+const HOTEL_BG_IMAGE = "https://images.unsplash.com/photo-1571896349842-6e53ce41e86c?q=80&w=2071&auto=format&fit=crop";
+
 export const FormRenderer: React.FC<FormRendererProps> = ({ form, onBack }) => {
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const bgImage = form.backgroundImageUrl && form.backgroundImageUrl.length > 5 ? form.backgroundImageUrl : HOTEL_BG_IMAGE;
 
   const handleInputChange = (fieldId: string, value: any) => {
     setAnswers(prev => ({ ...prev, [fieldId]: value }));
@@ -91,14 +96,12 @@ export const FormRenderer: React.FC<FormRendererProps> = ({ form, onBack }) => {
     setIsSubmitting(true);
 
     const cleanData: Record<string, any> = {
-        formId: form.id, // ID para vincular en BD
+        formId: form.id, 
         formTitle: form.title
     };
     
-    // Mapear respuestas usando la Etiqueta (Label) como clave para el Excel
     form.fields.forEach(f => {
         let val = answers[f.id];
-        // Convertir arrays (checkboxes) a string separado por comas para Excel
         if (Array.isArray(val)) {
             val = val.join(', ');
         }
@@ -135,93 +138,108 @@ export const FormRenderer: React.FC<FormRendererProps> = ({ form, onBack }) => {
         if (Array.isArray(answer)) answer = answer.join(', ');
         const displayValue = answer !== undefined && answer !== null ? String(answer) : '';
         const regex = new RegExp(`@${field.label}`, 'gi');
-        message = message.replace(regex, `<span class="font-semibold text-gray-900">${displayValue}</span>`);
+        message = message.replace(regex, `<span class="font-bold text-eco-400 border-b border-eco-500/30 pb-0.5">${displayValue}</span>`);
     });
     return message.replace(/\n/g, '<br/>');
   };
 
   if (isSubmitted) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-        <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden relative">
-          <div className="h-3 bg-[#043200] w-full"></div>
+      <div className="min-h-screen bg-dark-950 text-white flex items-center justify-center p-4 relative overflow-hidden">
+        {/* Ambient Glow */}
+        <div className="absolute top-[-20%] left-[-20%] w-[50%] h-[50%] bg-eco-500/10 rounded-full blur-[120px] pointer-events-none"></div>
+
+        <div className="bg-dark-900/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-dark-800 max-w-md w-full overflow-hidden relative z-10">
+          <div className="h-1 bg-gradient-to-r from-eco-600 to-eco-400 w-full"></div>
 
           <div className="p-8 text-center">
-            <div className="relative w-20 h-20 mx-auto mb-6">
-                <div className="absolute inset-0 bg-green-100 rounded-full animate-ping opacity-75"></div>
-                <div className="relative bg-green-100 rounded-full w-20 h-20 flex items-center justify-center">
-                    <CheckIcon className="w-10 h-10 text-green-700" />
+            <div className="relative w-24 h-24 mx-auto mb-6">
+                <div className="absolute inset-0 bg-eco-500/20 rounded-full animate-pulse"></div>
+                <div className="relative bg-eco-500/10 border border-eco-500/30 rounded-full w-24 h-24 flex items-center justify-center shadow-glow">
+                    <CheckIcon className="w-10 h-10 text-eco-400" />
                 </div>
             </div>
 
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">{form.thankYouScreen.title}</h2>
+            <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">{form.thankYouScreen.title}</h2>
             
-            <div className="text-gray-500 mb-8 font-medium">
+            <div className="text-dark-muted mb-8 font-medium text-sm">
                {new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
             </div>
 
-            <div className="bg-gray-50 rounded-xl p-6 mb-8 border border-gray-100 text-left">
+            <div className="bg-dark-800/50 rounded-xl p-6 mb-8 border border-dark-700 text-left relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-1 h-full bg-eco-500"></div>
                 <div 
-                    className="text-gray-600 text-sm leading-relaxed"
+                    className="text-gray-300 text-sm leading-relaxed"
                     dangerouslySetInnerHTML={{ __html: getInterpolatedMessage() }} 
                 />
             </div>
 
             <div className="flex flex-col gap-3">
              {form.thankYouScreen.redirectUrl && (
-                <a href={form.thankYouScreen.redirectUrl} className="w-full py-3.5 bg-[#043200] text-white rounded-xl font-bold hover:bg-[#064e00] transition-colors shadow-lg shadow-gray-200">
+                <a href={form.thankYouScreen.redirectUrl} className="w-full py-3.5 bg-eco-600 text-white rounded-xl font-bold hover:bg-eco-500 transition-colors shadow-lg shadow-eco-900/20">
                     Ir al enlace
                 </a>
              )}
              {onBack && (
                  <button 
                     onClick={onBack}
-                    className="w-full py-3.5 bg-white border border-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors"
+                    className="w-full py-3.5 bg-transparent border border-dark-700 text-dark-muted hover:text-white rounded-xl font-medium hover:bg-dark-800 transition-colors"
                  >
                     {form.thankYouScreen.buttonText || "Volver"}
                  </button>
              )}
             </div>
           </div>
-          <div className="h-4 w-full bg-white relative" style={{
-            backgroundImage: "linear-gradient(135deg, #f3f4f6 25%, transparent 25%), linear-gradient(225deg, #f3f4f6 25%, transparent 25%)",
-            backgroundPosition: "0 0",
-            backgroundSize: "20px 20px"
-          }}></div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-2xl mx-auto">
-        {onBack && (
-            <button onClick={onBack} className="flex items-center text-gray-500 hover:text-gray-900 mb-6 transition-colors">
-            <ArrowLeftIcon className="mr-2 w-4 h-4" />
-            Volver al Dashboard
+    <div className="min-h-screen bg-dark-950 text-white font-sans selection:bg-eco-500/30">
+      
+      {/* Hero Image Section */}
+      <div className="relative h-80 w-full overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-dark-950/60 to-dark-950 z-10"></div>
+          <img 
+            src={bgImage} 
+            alt="Hotel Background" 
+            className="w-full h-full object-cover opacity-80"
+          />
+          {onBack && (
+            <button 
+                onClick={onBack} 
+                className="absolute top-6 left-6 z-20 flex items-center gap-2 bg-dark-900/50 backdrop-blur-md px-4 py-2 rounded-full text-sm font-medium hover:bg-dark-900 transition-colors border border-white/10"
+            >
+                <ArrowLeftIcon className="w-4 h-4" />
+                <span>Volver</span>
             </button>
-        )}
+          )}
+      </div>
 
-        <div className="bg-white shadow-xl rounded-2xl overflow-hidden">
-          <div className="bg-[#043200] h-3 w-full"></div>
+      <div className="max-w-2xl mx-auto px-4 pb-20 -mt-24 relative z-20">
+        <div className="bg-dark-900/80 backdrop-blur-xl shadow-2xl rounded-3xl border border-dark-800 overflow-hidden">
+          {/* Header Strip */}
+          <div className="h-1 w-full bg-gradient-to-r from-eco-600 via-eco-400 to-eco-600"></div>
           
           <div className="px-8 py-10">
-            <h1 className="text-3xl font-extrabold text-gray-900 mb-2">{form.title}</h1>
-            <p className="text-gray-500 mb-8 text-lg">{form.description}</p>
+            <div className="mb-10">
+                <h1 className="text-4xl font-extrabold text-white mb-3 tracking-tight">{form.title}</h1>
+                <p className="text-dark-muted text-lg leading-relaxed">{form.description}</p>
+            </div>
 
             <form onSubmit={handleSubmit} className="space-y-8">
               {form.fields.map(field => (
-                <div key={field.id} className="space-y-2">
-                  <label className="block text-sm font-semibold text-gray-800">
-                    {field.label} {field.required && <span className="text-red-500">*</span>}
+                <div key={field.id} className="space-y-3 group">
+                  <label className="block text-sm font-bold text-gray-300 group-hover:text-eco-400 transition-colors uppercase tracking-wide text-xs">
+                    {field.label} {field.required && <span className="text-eco-500">*</span>}
                   </label>
                   
                   {field.type === FieldType.SHORT_TEXT && (
                     <input 
                       type="text" 
                       placeholder={field.placeholder}
-                      className={`w-full px-4 py-3 rounded-xl border ${errors[field.id] ? 'border-red-500 bg-red-50' : 'border-gray-200 focus:border-[#043200] focus:ring-4 focus:ring-green-900/10'} outline-none transition-all`}
+                      className={`w-full px-4 py-3.5 bg-dark-900/80 border ${errors[field.id] ? 'border-red-500/50' : 'border-dark-700 focus:border-eco-500'} rounded-xl text-white outline-none transition-all placeholder-dark-600 focus:bg-dark-800 focus:shadow-[0_0_15px_rgba(34,197,94,0.1)]`}
                       onChange={(e) => handleInputChange(field.id, e.target.value)}
                     />
                   )}
@@ -230,7 +248,7 @@ export const FormRenderer: React.FC<FormRendererProps> = ({ form, onBack }) => {
                     <textarea 
                       rows={4}
                       placeholder={field.placeholder}
-                      className={`w-full px-4 py-3 rounded-xl border ${errors[field.id] ? 'border-red-500 bg-red-50' : 'border-gray-200 focus:border-[#043200] focus:ring-4 focus:ring-green-900/10'} outline-none transition-all`}
+                      className={`w-full px-4 py-3.5 bg-dark-900/80 border ${errors[field.id] ? 'border-red-500/50' : 'border-dark-700 focus:border-eco-500'} rounded-xl text-white outline-none transition-all placeholder-dark-600 focus:bg-dark-800 focus:shadow-[0_0_15px_rgba(34,197,94,0.1)]`}
                       onChange={(e) => handleInputChange(field.id, e.target.value)}
                     />
                   )}
@@ -239,7 +257,7 @@ export const FormRenderer: React.FC<FormRendererProps> = ({ form, onBack }) => {
                     <input 
                       type="number"
                       placeholder={field.placeholder}
-                      className={`w-full px-4 py-3 rounded-xl border ${errors[field.id] ? 'border-red-500 bg-red-50' : 'border-gray-200 focus:border-[#043200] focus:ring-4 focus:ring-green-900/10'} outline-none transition-all`}
+                      className={`w-full px-4 py-3.5 bg-dark-900/80 border ${errors[field.id] ? 'border-red-500/50' : 'border-dark-700 focus:border-eco-500'} rounded-xl text-white outline-none transition-all placeholder-dark-600 focus:bg-dark-800 focus:shadow-[0_0_15px_rgba(34,197,94,0.1)]`}
                       onChange={(e) => handleInputChange(field.id, e.target.value)}
                     />
                   )}
@@ -247,7 +265,7 @@ export const FormRenderer: React.FC<FormRendererProps> = ({ form, onBack }) => {
                   {field.type === FieldType.DATE && (
                     <input 
                       type="date"
-                      className={`w-full px-4 py-3 rounded-xl border ${errors[field.id] ? 'border-red-500 bg-red-50' : 'border-gray-200 focus:border-[#043200] focus:ring-4 focus:ring-green-900/10'} outline-none transition-all bg-white`}
+                      className={`w-full px-4 py-3.5 bg-dark-900/80 border ${errors[field.id] ? 'border-red-500/50' : 'border-dark-700 focus:border-eco-500'} rounded-xl text-white outline-none transition-all placeholder-dark-600 focus:bg-dark-800 [color-scheme:dark]`}
                       onChange={(e) => handleInputChange(field.id, e.target.value)}
                     />
                   )}
@@ -255,82 +273,93 @@ export const FormRenderer: React.FC<FormRendererProps> = ({ form, onBack }) => {
                   {field.type === FieldType.TIME && (
                     <input 
                       type="time"
-                      className={`w-full px-4 py-3 rounded-xl border ${errors[field.id] ? 'border-red-500 bg-red-50' : 'border-gray-200 focus:border-[#043200] focus:ring-4 focus:ring-green-900/10'} outline-none transition-all bg-white`}
+                      className={`w-full px-4 py-3.5 bg-dark-900/80 border ${errors[field.id] ? 'border-red-500/50' : 'border-dark-700 focus:border-eco-500'} rounded-xl text-white outline-none transition-all placeholder-dark-600 focus:bg-dark-800 [color-scheme:dark]`}
                       onChange={(e) => handleInputChange(field.id, e.target.value)}
                     />
                   )}
 
                   {field.type === FieldType.SINGLE_SELECT && (
-                    <div className="space-y-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {field.options?.map(opt => (
-                        <label key={opt} className="flex items-center p-3 border rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
+                        <label key={opt} className="relative flex items-center p-4 border border-dark-700 rounded-xl hover:bg-dark-800 hover:border-eco-500/30 cursor-pointer transition-all group/opt bg-dark-900/50">
                           <input 
                             type="radio" 
                             name={field.id} 
                             value={opt}
-                            className="h-4 w-4 text-[#043200] focus:ring-[#043200] border-gray-300"
+                            className="peer h-4 w-4 text-eco-500 focus:ring-eco-500 bg-dark-900 border-dark-600"
                             onChange={(e) => handleInputChange(field.id, e.target.value)}
                           />
-                          <span className="ml-3 text-gray-700 font-medium">{opt}</span>
+                          <span className="ml-3 text-dark-muted font-medium peer-checked:text-white transition-colors">{opt}</span>
+                          <div className="absolute inset-0 border-2 border-transparent peer-checked:border-eco-500 rounded-xl pointer-events-none"></div>
                         </label>
                       ))}
                     </div>
                   )}
 
                   {field.type === FieldType.CHECKBOX && (
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       {field.options?.map(opt => (
-                        <label key={opt} className="flex items-center p-3 border rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
+                        <label key={opt} className="flex items-center p-4 border border-dark-700 rounded-xl hover:bg-dark-800 cursor-pointer transition-all bg-dark-900/50">
                           <input 
                             type="checkbox" 
                             name={field.id} 
                             value={opt}
-                            className="h-4 w-4 text-[#043200] focus:ring-[#043200] border-gray-300 rounded"
+                            className="h-5 w-5 text-eco-500 bg-dark-900 border-dark-600 rounded focus:ring-eco-500 focus:ring-offset-dark-900"
                             onChange={(e) => handleCheckboxChange(field.id, opt, e.target.checked)}
                           />
-                          <span className="ml-3 text-gray-700 font-medium">{opt}</span>
+                          <span className="ml-3 text-gray-300 font-medium">{opt}</span>
                         </label>
                       ))}
                     </div>
                   )}
 
                   {field.type === FieldType.IMAGE_UPLOAD && (
-                    <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-xl hover:bg-gray-50 transition-colors">
-                      <div className="space-y-1 text-center">
-                        <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
+                    <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dark-700 border-dashed rounded-xl hover:bg-dark-800/50 hover:border-eco-500/50 transition-colors bg-dark-800/20">
+                      <div className="space-y-2 text-center">
+                        <svg className="mx-auto h-12 w-12 text-dark-600" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
                           <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
-                        <div className="flex text-sm text-gray-600 justify-center">
-                          <label htmlFor={field.id} className="relative cursor-pointer bg-white rounded-md font-medium text-[#043200] hover:text-[#064e00] focus-within:outline-none">
-                            <span>Subir un archivo</span>
+                        <div className="flex text-sm text-dark-muted justify-center">
+                          <label htmlFor={field.id} className="relative cursor-pointer rounded-md font-bold text-eco-400 hover:text-eco-300 focus-within:outline-none hover:underline">
+                            <span>Subir archivo</span>
                             <input id={field.id} name={field.id} type="file" className="sr-only" accept="image/*" onChange={(e) => handleFileChange(field.id, e)} />
                           </label>
                         </div>
-                        <p className="text-xs text-gray-500">PNG, JPG hasta 2MB (Google Sheets puede truncar imágenes grandes)</p>
+                        <p className="text-xs text-dark-600">PNG, JPG hasta 2MB</p>
                         {answers[field.id] && (
-                            <p className="text-xs text-green-700 font-bold mt-2">Imagen seleccionada</p>
+                            <div className="flex items-center justify-center gap-2 mt-2 text-eco-400 text-xs font-bold bg-eco-500/10 py-1 px-3 rounded-full">
+                                <CheckIcon className="w-3 h-3" />
+                                Imagen lista
+                            </div>
                         )}
                       </div>
                     </div>
                   )}
 
                   {errors[field.id] && (
-                    <p className="text-sm text-red-500 font-medium mt-1 ml-1">{errors[field.id]}</p>
+                    <p className="text-sm text-red-400 font-medium mt-1 ml-1 flex items-center gap-1">
+                        <span className="w-1 h-1 rounded-full bg-red-400 inline-block"></span>
+                        {errors[field.id]}
+                    </p>
                   )}
                 </div>
               ))}
 
-              <div className="pt-6">
+              <div className="pt-8">
                 <button 
                   type="submit" 
                   disabled={isSubmitting}
-                  className="w-full flex justify-center py-4 px-4 border border-transparent shadow-sm text-lg font-medium rounded-xl text-white bg-[#043200] hover:bg-[#064e00] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 transition-all disabled:opacity-70 disabled:cursor-wait"
+                  className="w-full flex justify-center py-4 px-6 border border-transparent shadow-[0_0_20px_rgba(34,197,94,0.2)] text-lg font-bold rounded-xl text-dark-900 bg-gradient-to-r from-eco-600 to-eco-400 hover:from-eco-500 hover:to-eco-300 focus:outline-none transform transition-all hover:scale-[1.01] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] disabled:opacity-70 disabled:cursor-wait"
                 >
-                  {isSubmitting ? 'Enviando...' : 'Enviar Respuestas'}
+                  {isSubmitting ? 'Confirmando...' : 'Confirmar Reserva'}
                 </button>
               </div>
             </form>
           </div>
+        </div>
+        
+        <div className="text-center mt-8 text-dark-600 text-xs font-medium uppercase tracking-widest opacity-50">
+            Powered by Ecoparadise
         </div>
       </div>
     </div>

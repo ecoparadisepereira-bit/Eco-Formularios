@@ -46,7 +46,8 @@ export interface FormSchema {
   createdAt: number;
   fields: FormField[];
   thankYouScreen: ThankYouScreen;
-  googleSheetUrl?: string; // NEW: Webhook URL for Google Sheets
+  googleSheetUrl?: string; // Webhook URL for Google Sheets
+  backgroundImageUrl?: string; // NEW: Custom background image
 }
 
 // Form Response

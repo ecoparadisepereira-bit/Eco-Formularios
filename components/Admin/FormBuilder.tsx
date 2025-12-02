@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { FormSchema, FieldType, FormField } from '../../types';
-import { PlusIcon, TrashIcon, SparklesIcon, GripVerticalIcon, ArrowLeftIcon, CalendarIcon, ClockIcon, ListCheckIcon } from '../ui/Icons';
+import { PlusIcon, TrashIcon, SparklesIcon, GripVerticalIcon, ArrowLeftIcon, CalendarIcon, ClockIcon, ListCheckIcon, UploadCloudIcon, ImageIcon } from '../ui/Icons';
 import { generateFormSchema } from '../../services/geminiService';
 
 interface FormBuilderProps {
@@ -20,12 +20,21 @@ const defaultThankYou = {
 
 const DEFAULT_SHEET_URL = "https://script.google.com/macros/s/AKfycbyQscuJzzO-2lQQiTwuNTL0-LrCQ-82LcVa8npwaK7AuG7LJa4sCLqJKSmL5qDZG851/exec";
 
+// Preset Backgrounds
+const PRESET_IMAGES = [
+  { name: 'Hotel Luxury', url: 'https://images.unsplash.com/photo-1571896349842-6e53ce41e86c?q=80&w=2071&auto=format&fit=crop' },
+  { name: 'Naturaleza Eco', url: 'https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?q=80&w=2070&auto=format&fit=crop' },
+  { name: 'Oscuro Abstracto', url: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=2070&auto=format&fit=crop' },
+  { name: 'Minimal Verde', url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1964&auto=format&fit=crop' }
+];
+
 export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, onCancel }) => {
   const [activeTab, setActiveTab] = useState<'fields' | 'settings'>('fields');
   const [loadingAi, setLoadingAi] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [aiPrompt, setAiPrompt] = useState('');
   const [showAiModal, setShowAiModal] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Form State
   const [title, setTitle] = useState(initialData?.title || 'Nuevo Formulario');
@@ -33,6 +42,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
   const [fields, setFields] = useState<FormField[]>(initialData?.fields || []);
   const [thankYou, setThankYou] = useState(initialData?.thankYouScreen || defaultThankYou);
   const [googleSheetUrl, setGoogleSheetUrl] = useState(initialData?.googleSheetUrl || DEFAULT_SHEET_URL);
+  const [backgroundImageUrl, setBackgroundImageUrl] = useState(initialData?.backgroundImageUrl || '');
   
   // Custom ID
   const [customId, setCustomId] = useState(initialData?.id || generateId());
@@ -82,6 +92,45 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
     }
   };
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+        // Validación inicial de tamaño (2MB)
+        if (file.size > 2 * 1024 * 1024) {
+            alert("La imagen original es demasiado pesada (>2MB). Intenta con una más pequeña.");
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                // Redimensionar agresivamente para Google Sheets (Max 800px ancho)
+                const MAX_WIDTH = 800;
+                const scaleSize = MAX_WIDTH / img.width;
+                canvas.width = MAX_WIDTH;
+                canvas.height = img.height * scaleSize;
+                
+                const ctx = canvas.getContext('2d');
+                ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+                
+                // Comprimir a JPEG calidad 0.6
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+                
+                // Verificar límite estricto de Google Sheets (aprox 50k caracteres)
+                if (dataUrl.length > 48000) {
+                     alert("La imagen sigue siendo demasiado compleja para guardarla directamente en Excel. Por favor usa una de las opciones de la Galería o pega una URL externa.");
+                } else {
+                    setBackgroundImageUrl(dataUrl);
+                }
+            };
+            img.src = event.target?.result as string;
+        };
+        reader.readAsDataURL(file);
+    }
+  };
+
   const handleSave = async () => {
     if (!title.trim()) return alert("El título es obligatorio");
     const cleanId = customId.trim().replace(/[^a-zA-Z0-9-_]/g, '');
@@ -96,11 +145,15 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
       thankYouScreen: thankYou,
       isActive: initialData?.isActive ?? true,
       createdAt: initialData?.createdAt || Date.now(),
-      googleSheetUrl: googleSheetUrl.trim()
+      googleSheetUrl: googleSheetUrl.trim(),
+      backgroundImageUrl: backgroundImageUrl.trim()
     };
     await onSave(newForm);
     setIsSaving(false);
   };
+
+  // Shared input style class with explicit bg color override
+  const inputClass = "w-full !bg-[#050505] border border-dark-600 rounded-lg px-3 py-2 text-sm text-white focus:border-eco-500 focus:ring-1 focus:ring-eco-500 outline-none transition-all placeholder-dark-600";
 
   return (
     <div className="bg-dark-900 min-h-screen text-white">
@@ -170,28 +223,96 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
                 <button onClick={() => handleAddField(FieldType.IMAGE_UPLOAD)} className="field-btn">Subir Imagen</button>
               </div>
             ) : (
-              <div className="space-y-5">
+              <div className="space-y-6">
                 <div>
                     <label className="block text-sm font-medium text-dark-muted mb-1">ID Personalizado (URL)</label>
-                    <div className="flex items-center">
-                        <span className="bg-dark-900 border border-r-0 border-dark-600 rounded-l-lg px-3 py-2 text-xs text-dark-muted font-mono">?id=</span>
+                    <div className="flex items-center group">
+                        <span className="bg-dark-950 border border-r-0 border-dark-600 rounded-l-lg px-3 py-2 text-xs text-dark-muted font-mono group-focus-within:border-eco-500 transition-colors">?id=</span>
                         <input 
                             type="text" 
                             value={customId}
                             onChange={(e) => setCustomId(e.target.value)}
-                            className="w-full bg-dark-900 border border-dark-600 rounded-r-lg px-3 py-2 text-sm focus:border-eco-500 focus:ring-1 focus:ring-eco-500 outline-none text-white font-mono"
+                            className="w-full !bg-[#050505] border border-l-0 border-dark-600 rounded-r-lg px-3 py-2 text-sm focus:border-eco-500 focus:ring-0 outline-none text-white font-mono transition-colors"
                         />
                     </div>
                 </div>
 
-                <div className="bg-dark-900/50 p-4 rounded-xl border border-dark-700">
+                <div className="bg-dark-950/50 p-4 rounded-xl border border-dark-700">
                     <label className="block text-xs font-bold text-eco-400 mb-2 uppercase">Webhook Google Sheets</label>
                     <input 
                     type="url" 
                     value={googleSheetUrl}
                     onChange={(e) => setGoogleSheetUrl(e.target.value)}
-                    className="w-full bg-dark-800 border border-dark-600 rounded-lg px-3 py-2 text-xs focus:border-eco-500 outline-none text-dark-muted"
+                    className="w-full !bg-[#0B0E14] border border-dark-600 rounded-lg px-3 py-2 text-xs focus:border-eco-500 outline-none text-dark-muted focus:text-white transition-colors"
+                    placeholder="https://script.google.com/..."
                     />
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-dark-muted mb-2">Imagen de Fondo</label>
+                    
+                    {/* Presets Gallery */}
+                    <div className="grid grid-cols-4 gap-2 mb-3">
+                        {PRESET_IMAGES.map((img, i) => (
+                            <button 
+                                key={i}
+                                onClick={() => setBackgroundImageUrl(img.url)}
+                                className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all ${backgroundImageUrl === img.url ? 'border-eco-500 ring-2 ring-eco-500/20' : 'border-transparent hover:border-white/20'}`}
+                                title={img.name}
+                            >
+                                <img src={img.url} alt={img.name} className="w-full h-full object-cover" />
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Upload & URL Controls */}
+                    <div className="flex gap-2 mb-2">
+                        <input 
+                            type="file" 
+                            ref={fileInputRef} 
+                            className="hidden" 
+                            accept="image/*"
+                            onChange={handleImageUpload}
+                        />
+                        <button 
+                            onClick={() => fileInputRef.current?.click()}
+                            className="flex-1 flex items-center justify-center gap-2 py-2 bg-dark-700 hover:bg-dark-600 border border-dark-600 rounded-lg text-xs font-medium text-white transition-colors"
+                        >
+                            <UploadCloudIcon className="w-4 h-4" />
+                            Subir desde PC
+                        </button>
+                    </div>
+
+                    <div className="relative group">
+                        <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                            <ImageIcon className="w-4 h-4 text-dark-600" />
+                        </div>
+                        <input 
+                            type="text" 
+                            value={backgroundImageUrl}
+                            onChange={(e) => setBackgroundImageUrl(e.target.value)}
+                            className={inputClass + " pl-9 text-xs"}
+                            placeholder="O pega una URL externa..."
+                        />
+                    </div>
+
+                    {/* Preview */}
+                    <div className="w-full h-32 rounded-lg overflow-hidden border border-dark-600 relative bg-dark-950 mt-3 group">
+                        {backgroundImageUrl ? (
+                            <>
+                                <img src={backgroundImageUrl} alt="Preview" className="w-full h-full object-cover" onError={(e) => e.currentTarget.style.display = 'none'} />
+                                {backgroundImageUrl.startsWith('data:image') && (
+                                    <div className="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] px-2 py-1 rounded backdrop-blur">Subida Local</div>
+                                )}
+                            </>
+                        ) : (
+                            <div className="flex items-center justify-center h-full text-dark-700 text-xs flex-col gap-2">
+                                <ImageIcon className="w-6 h-6 opacity-20" />
+                                <span>Sin imagen seleccionada</span>
+                            </div>
+                        )}
+                        <div className="absolute inset-0 border border-white/5 rounded-lg pointer-events-none"></div>
+                    </div>
                 </div>
 
                 <div className="border-t border-dark-700 pt-4">
@@ -200,7 +321,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
                         type="text" 
                         value={thankYou.title}
                         onChange={(e) => setThankYou({...thankYou, title: e.target.value})}
-                        className="dark-input"
+                        className={inputClass}
                     />
                 </div>
                 <div>
@@ -209,7 +330,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
                     value={thankYou.message}
                     onChange={(e) => setThankYou({...thankYou, message: e.target.value})}
                     rows={4}
-                    className="dark-input"
+                    className={inputClass + " resize-none"}
                   />
                   <div className="mt-2 text-xs text-dark-muted">
                     Usa <span className="text-eco-400">@Etiqueta</span> para insertar respuestas.
@@ -221,7 +342,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
                     type="text" 
                     value={thankYou.buttonText}
                     onChange={(e) => setThankYou({...thankYou, buttonText: e.target.value})}
-                    className="dark-input"
+                    className={inputClass}
                   />
                 </div>
               </div>
@@ -289,7 +410,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
                         type="checkbox" 
                         checked={field.required}
                         onChange={(e) => updateField(field.id, { required: e.target.checked })}
-                        className="rounded text-eco-500 focus:ring-eco-500 bg-dark-900 border-dark-600 w-4 h-4"
+                        className="rounded text-eco-500 focus:ring-eco-500 bg-dark-950 border-dark-600 w-4 h-4"
                       />
                       <span className="text-sm text-dark-muted group-hover:text-white transition-colors">Obligatorio</span>
                     </label>
@@ -301,7 +422,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
                           placeholder="Min"
                           value={field.validation?.min || ''}
                           onChange={(e) => updateField(field.id, { validation: { ...field.validation, min: parseInt(e.target.value) || undefined } })}
-                          className="w-16 bg-dark-900 border border-dark-600 rounded px-2 py-1 text-white text-xs"
+                          className="w-16 !bg-[#050505] border border-dark-600 rounded px-2 py-1 text-white text-xs"
                         />
                         <span className="text-dark-600">-</span>
                         <input 
@@ -309,7 +430,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
                           placeholder="Max"
                           value={field.validation?.max || ''}
                           onChange={(e) => updateField(field.id, { validation: { ...field.validation, max: parseInt(e.target.value) || undefined } })}
-                          className="w-16 bg-dark-900 border border-dark-600 rounded px-2 py-1 text-white text-xs"
+                          className="w-16 !bg-[#050505] border border-dark-600 rounded px-2 py-1 text-white text-xs"
                         />
                       </div>
                     )}
@@ -320,7 +441,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
                           type="text"
                           value={field.options?.join(', ') || ''}
                           onChange={(e) => updateField(field.id, { options: e.target.value.split(',').map(s => s.trim()) })}
-                          className="w-full bg-dark-900 border border-dark-600 rounded px-3 py-2 text-sm text-white focus:border-eco-500 outline-none"
+                          className={inputClass}
                           placeholder="Opciones separadas por coma..."
                         />
                       </div>
@@ -355,7 +476,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
             <textarea
               value={aiPrompt}
               onChange={(e) => setAiPrompt(e.target.value)}
-              className="w-full bg-dark-900 border border-dark-700 rounded-xl p-4 mb-6 text-white focus:border-eco-500 outline-none resize-none h-32 placeholder-dark-600"
+              className="w-full !bg-[#050505] border border-dark-700 rounded-xl p-4 mb-6 text-white focus:border-eco-500 outline-none resize-none h-32 placeholder-dark-600"
               placeholder="Ej: Formulario de satisfacción para hotel de lujo..."
             />
             
@@ -382,9 +503,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
       <style>{`
         .field-btn {
             @apply text-left px-4 py-3 bg-dark-900/50 hover:bg-eco-500/10 hover:text-eco-400 text-dark-muted rounded-xl text-sm font-medium transition-colors border border-transparent hover:border-eco-500/20 w-full;
-        }
-        .dark-input {
-            @apply w-full bg-dark-900 border border-dark-600 rounded-lg px-3 py-2 text-sm text-white focus:border-eco-500 focus:ring-1 focus:ring-eco-500 outline-none transition-all;
         }
       `}</style>
     </div>
