@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { FormSchema, FieldType, FormField } from '../../types';
-import { PlusIcon, TrashIcon, SparklesIcon, GripVerticalIcon, ArrowLeftIcon, CalendarIcon, ClockIcon, ListCheckIcon, UploadCloudIcon, ImageIcon } from '../ui/Icons';
+import { PlusIcon, TrashIcon, SparklesIcon, GripVerticalIcon, ArrowLeftIcon, CalendarIcon, ClockIcon, ListCheckIcon, UploadCloudIcon, ImageIcon, CheckIcon, TextIcon, HashIcon, ListIcon } from '../ui/Icons';
 import { generateFormSchema } from '../../services/geminiService';
 
 interface FormBuilderProps {
@@ -95,7 +95,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-        // Validación inicial de tamaño (2MB)
         if (file.size > 2 * 1024 * 1024) {
             alert("La imagen original es demasiado pesada (>2MB). Intenta con una más pequeña.");
             return;
@@ -106,7 +105,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
             const img = new Image();
             img.onload = () => {
                 const canvas = document.createElement('canvas');
-                // Redimensionar agresivamente para Google Sheets (Max 800px ancho)
                 const MAX_WIDTH = 800;
                 const scaleSize = MAX_WIDTH / img.width;
                 canvas.width = MAX_WIDTH;
@@ -114,11 +112,8 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
                 
                 const ctx = canvas.getContext('2d');
                 ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-                
-                // Comprimir a JPEG calidad 0.6
                 const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
                 
-                // Verificar límite estricto de Google Sheets (aprox 50k caracteres)
                 if (dataUrl.length > 48000) {
                      alert("La imagen sigue siendo demasiado compleja para guardarla directamente en Excel. Por favor usa una de las opciones de la Galería o pega una URL externa.");
                 } else {
@@ -152,7 +147,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
     setIsSaving(false);
   };
 
-  // Shared input style class with explicit bg color override
   const inputClass = "w-full !bg-[#050505] border border-dark-600 rounded-lg px-3 py-2 text-sm text-white focus:border-eco-500 focus:ring-1 focus:ring-eco-500 outline-none transition-all placeholder-dark-600";
 
   return (
@@ -190,7 +184,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
       <div className="max-w-6xl mx-auto p-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Sidebar Controls */}
         <div className="lg:col-span-4 space-y-6">
-          <div className="bg-dark-800 rounded-2xl border border-dark-700 p-5 shadow-card sticky top-28">
+          <div className="bg-dark-800 rounded-2xl border border-dark-700 p-5 shadow-card sticky top-28 max-h-[calc(100vh-140px)] overflow-y-auto custom-scrollbar">
             <div className="flex gap-2 mb-6 border-b border-dark-700 pb-2">
               <button 
                 onClick={() => setActiveTab('fields')}
@@ -208,143 +202,167 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
 
             {activeTab === 'fields' ? (
               <div className="grid grid-cols-1 gap-2">
-                <p className="text-xs text-dark-muted font-bold uppercase mb-2 tracking-wider mt-1">Texto & Números</p>
-                <button onClick={() => handleAddField(FieldType.SHORT_TEXT)} className="field-btn">Texto Corto</button>
-                <button onClick={() => handleAddField(FieldType.LONG_TEXT)} className="field-btn">Texto Largo</button>
-                <button onClick={() => handleAddField(FieldType.NUMBER)} className="field-btn">Número</button>
+                <p className="text-xs text-dark-muted font-bold uppercase mb-2 tracking-wider mt-1 ml-1">Texto & Números</p>
+                <button onClick={() => handleAddField(FieldType.SHORT_TEXT)} className="field-btn flex items-center gap-3"><TextIcon className="w-4 h-4 opacity-70" /> Texto Corto</button>
+                <button onClick={() => handleAddField(FieldType.LONG_TEXT)} className="field-btn flex items-center gap-3"><TextIcon className="w-4 h-4 opacity-70" /> Texto Largo</button>
+                <button onClick={() => handleAddField(FieldType.NUMBER)} className="field-btn flex items-center gap-3"><HashIcon className="w-4 h-4 opacity-70" /> Número</button>
                 
-                <p className="text-xs text-dark-muted font-bold uppercase mb-2 mt-4 tracking-wider">Selección</p>
-                <button onClick={() => handleAddField(FieldType.SINGLE_SELECT)} className="field-btn">Selección Única</button>
-                <button onClick={() => handleAddField(FieldType.CHECKBOX)} className="field-btn flex items-center gap-2"><ListCheckIcon className="w-4 h-4 opacity-60" /> Casillas</button>
+                <p className="text-xs text-dark-muted font-bold uppercase mb-2 mt-4 tracking-wider ml-1">Selección</p>
+                <button onClick={() => handleAddField(FieldType.SINGLE_SELECT)} className="field-btn flex items-center gap-3"><ListIcon className="w-4 h-4 opacity-70" /> Selección Única</button>
+                <button onClick={() => handleAddField(FieldType.CHECKBOX)} className="field-btn flex items-center gap-3"><ListCheckIcon className="w-4 h-4 opacity-70" /> Casillas</button>
 
-                <p className="text-xs text-dark-muted font-bold uppercase mb-2 mt-4 tracking-wider">Avanzado</p>
-                <button onClick={() => handleAddField(FieldType.DATE)} className="field-btn flex items-center gap-2"><CalendarIcon className="w-4 h-4 opacity-60" /> Fecha</button>
-                <button onClick={() => handleAddField(FieldType.TIME)} className="field-btn flex items-center gap-2"><ClockIcon className="w-4 h-4 opacity-60" /> Hora</button>
-                <button onClick={() => handleAddField(FieldType.IMAGE_UPLOAD)} className="field-btn">Subir Imagen</button>
+                <p className="text-xs text-dark-muted font-bold uppercase mb-2 mt-4 tracking-wider ml-1">Avanzado</p>
+                <button onClick={() => handleAddField(FieldType.DATE)} className="field-btn flex items-center gap-3"><CalendarIcon className="w-4 h-4 opacity-70" /> Fecha</button>
+                <button onClick={() => handleAddField(FieldType.TIME)} className="field-btn flex items-center gap-3"><ClockIcon className="w-4 h-4 opacity-70" /> Hora</button>
+                <button onClick={() => handleAddField(FieldType.IMAGE_UPLOAD)} className="field-btn flex items-center gap-3"><ImageIcon className="w-4 h-4 opacity-70" /> Subir Imagen</button>
               </div>
             ) : (
-              <div className="space-y-6">
-                <div>
-                    <label className="block text-sm font-medium text-dark-muted mb-1">ID Personalizado (URL)</label>
-                    <div className="flex items-center group">
-                        <span className="bg-dark-950 border border-r-0 border-dark-600 rounded-l-lg px-3 py-2 text-xs text-dark-muted font-mono group-focus-within:border-eco-500 transition-colors">?id=</span>
-                        <input 
-                            type="text" 
-                            value={customId}
-                            onChange={(e) => setCustomId(e.target.value)}
-                            className="w-full !bg-[#050505] border border-l-0 border-dark-600 rounded-r-lg px-3 py-2 text-sm focus:border-eco-500 focus:ring-0 outline-none text-white font-mono transition-colors"
-                        />
-                    </div>
-                </div>
-
-                <div className="bg-dark-950/50 p-4 rounded-xl border border-dark-700">
-                    <label className="block text-xs font-bold text-eco-400 mb-2 uppercase">Webhook Google Sheets</label>
-                    <input 
-                    type="url" 
-                    value={googleSheetUrl}
-                    onChange={(e) => setGoogleSheetUrl(e.target.value)}
-                    className="w-full !bg-[#0B0E14] border border-dark-600 rounded-lg px-3 py-2 text-xs focus:border-eco-500 outline-none text-dark-muted focus:text-white transition-colors"
-                    placeholder="https://script.google.com/..."
-                    />
-                </div>
-
-                <div>
-                    <label className="block text-sm font-medium text-dark-muted mb-2">Imagen de Fondo</label>
-                    
-                    {/* Presets Gallery */}
-                    <div className="grid grid-cols-4 gap-2 mb-3">
-                        {PRESET_IMAGES.map((img, i) => (
-                            <button 
-                                key={i}
-                                onClick={() => setBackgroundImageUrl(img.url)}
-                                className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all ${backgroundImageUrl === img.url ? 'border-eco-500 ring-2 ring-eco-500/20' : 'border-transparent hover:border-white/20'}`}
-                                title={img.name}
-                            >
-                                <img src={img.url} alt={img.name} className="w-full h-full object-cover" />
-                            </button>
-                        ))}
-                    </div>
-
-                    {/* Upload & URL Controls */}
-                    <div className="flex gap-2 mb-2">
-                        <input 
-                            type="file" 
-                            ref={fileInputRef} 
-                            className="hidden" 
-                            accept="image/*"
-                            onChange={handleImageUpload}
-                        />
-                        <button 
-                            onClick={() => fileInputRef.current?.click()}
-                            className="flex-1 flex items-center justify-center gap-2 py-2 bg-dark-700 hover:bg-dark-600 border border-dark-600 rounded-lg text-xs font-medium text-white transition-colors"
-                        >
-                            <UploadCloudIcon className="w-4 h-4" />
-                            Subir desde PC
-                        </button>
-                    </div>
-
-                    <div className="relative group">
-                        <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                            <ImageIcon className="w-4 h-4 text-dark-600" />
+              <div className="space-y-8 pr-1">
+                {/* SECTION 1: IDENTITY */}
+                <section>
+                    <h3 className="text-[10px] font-bold text-eco-400 uppercase tracking-widest mb-3 border-b border-dark-700 pb-2 flex items-center gap-2">
+                        <span>Identidad</span>
+                    </h3>
+                    <div>
+                        <label className="block text-xs font-medium text-dark-muted mb-1.5">ID Personalizado (URL)</label>
+                        <div className="flex items-center group">
+                            <span className="bg-dark-900 border border-r-0 border-dark-600 rounded-l-lg px-3 py-2.5 text-xs text-dark-muted font-mono group-focus-within:border-eco-500 transition-colors">?id=</span>
+                            <input 
+                                type="text" 
+                                value={customId}
+                                onChange={(e) => setCustomId(e.target.value)}
+                                className="w-full !bg-[#050505] border border-l-0 border-dark-600 rounded-r-lg px-3 py-2.5 text-sm focus:border-eco-500 focus:ring-0 outline-none text-white font-mono transition-colors"
+                            />
                         </div>
+                        <p className="text-[10px] text-dark-muted mt-1.5 opacity-70">Este identificador hace que el enlace sea corto y fácil de leer.</p>
+                    </div>
+                </section>
+
+                {/* SECTION 2: INTEGRATIONS */}
+                <section>
+                    <h3 className="text-[10px] font-bold text-eco-400 uppercase tracking-widest mb-3 border-b border-dark-700 pb-2 flex items-center gap-2">
+                        <span>Integraciones</span>
+                    </h3>
+                    <div className="bg-dark-900/50 p-4 rounded-xl border border-dark-700">
+                        <label className="block text-xs font-bold text-white mb-2 uppercase">Webhook Google Sheets</label>
                         <input 
-                            type="text" 
-                            value={backgroundImageUrl}
-                            onChange={(e) => setBackgroundImageUrl(e.target.value)}
-                            className={inputClass + " pl-9 text-xs"}
-                            placeholder="O pega una URL externa..."
+                        type="url" 
+                        value={googleSheetUrl}
+                        onChange={(e) => setGoogleSheetUrl(e.target.value)}
+                        className="w-full !bg-[#0B0E14] border border-dark-600 rounded-lg px-3 py-2 text-xs focus:border-eco-500 outline-none text-dark-muted focus:text-white transition-colors font-mono"
+                        placeholder="https://script.google.com/..."
                         />
                     </div>
+                </section>
 
-                    {/* Preview */}
-                    <div className="w-full h-32 rounded-lg overflow-hidden border border-dark-600 relative bg-dark-950 mt-3 group">
-                        {backgroundImageUrl ? (
-                            <>
-                                <img src={backgroundImageUrl} alt="Preview" className="w-full h-full object-cover" onError={(e) => e.currentTarget.style.display = 'none'} />
-                                {backgroundImageUrl.startsWith('data:image') && (
-                                    <div className="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] px-2 py-1 rounded backdrop-blur">Subida Local</div>
-                                )}
-                            </>
-                        ) : (
-                            <div className="flex items-center justify-center h-full text-dark-700 text-xs flex-col gap-2">
-                                <ImageIcon className="w-6 h-6 opacity-20" />
-                                <span>Sin imagen seleccionada</span>
+                {/* SECTION 3: DESIGN */}
+                <section>
+                    <h3 className="text-[10px] font-bold text-eco-400 uppercase tracking-widest mb-3 border-b border-dark-700 pb-2 flex items-center gap-2">
+                        <span>Diseño & Marca</span>
+                    </h3>
+                    <div>
+                        <label className="block text-xs font-medium text-dark-muted mb-2">Imagen de Fondo</label>
+                        
+                        <div className="grid grid-cols-4 gap-2 mb-3">
+                            {PRESET_IMAGES.map((img, i) => (
+                                <button 
+                                    key={i}
+                                    onClick={() => setBackgroundImageUrl(img.url)}
+                                    className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all ${backgroundImageUrl === img.url ? 'border-eco-500 ring-2 ring-eco-500/20' : 'border-transparent hover:border-white/20'}`}
+                                    title={img.name}
+                                >
+                                    <img src={img.url} alt={img.name} className="w-full h-full object-cover" />
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="flex gap-2 mb-2">
+                            <input 
+                                type="file" 
+                                ref={fileInputRef} 
+                                className="hidden" 
+                                accept="image/*"
+                                onChange={handleImageUpload}
+                            />
+                            <button 
+                                onClick={() => fileInputRef.current?.click()}
+                                className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-dark-700 hover:bg-dark-600 border border-dark-600 rounded-lg text-xs font-bold text-white transition-colors"
+                            >
+                                <UploadCloudIcon className="w-4 h-4" />
+                                Subir desde PC
+                            </button>
+                        </div>
+
+                        <div className="relative group">
+                            <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                                <ImageIcon className="w-4 h-4 text-dark-600" />
                             </div>
-                        )}
-                        <div className="absolute inset-0 border border-white/5 rounded-lg pointer-events-none"></div>
-                    </div>
-                </div>
+                            <input 
+                                type="text" 
+                                value={backgroundImageUrl}
+                                onChange={(e) => setBackgroundImageUrl(e.target.value)}
+                                className={inputClass + " pl-9 text-xs"}
+                                placeholder="O pega una URL externa..."
+                            />
+                        </div>
 
-                <div className="border-t border-dark-700 pt-4">
-                    <label className="block text-sm font-medium text-dark-muted mb-1">Título Agradecimiento</label>
-                    <input 
-                        type="text" 
-                        value={thankYou.title}
-                        onChange={(e) => setThankYou({...thankYou, title: e.target.value})}
-                        className={inputClass}
-                    />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-dark-muted mb-1">Mensaje</label>
-                  <textarea 
-                    value={thankYou.message}
-                    onChange={(e) => setThankYou({...thankYou, message: e.target.value})}
-                    rows={4}
-                    className={inputClass + " resize-none"}
-                  />
-                  <div className="mt-2 text-xs text-dark-muted">
-                    Usa <span className="text-eco-400">@Etiqueta</span> para insertar respuestas.
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-dark-muted mb-1">Botón</label>
-                  <input 
-                    type="text" 
-                    value={thankYou.buttonText}
-                    onChange={(e) => setThankYou({...thankYou, buttonText: e.target.value})}
-                    className={inputClass}
-                  />
-                </div>
+                        {/* Preview */}
+                        <div className="w-full h-24 rounded-lg overflow-hidden border border-dark-600 relative bg-dark-950 mt-3 group">
+                            {backgroundImageUrl ? (
+                                <>
+                                    <img src={backgroundImageUrl} alt="Preview" className="w-full h-full object-cover" onError={(e) => e.currentTarget.style.display = 'none'} />
+                                    {backgroundImageUrl.startsWith('data:image') && (
+                                        <div className="absolute bottom-1 right-1 bg-black/70 text-white text-[9px] px-1.5 py-0.5 rounded backdrop-blur font-medium">Subida Local</div>
+                                    )}
+                                </>
+                            ) : (
+                                <div className="flex items-center justify-center h-full text-dark-700 text-xs flex-col gap-1">
+                                    <ImageIcon className="w-5 h-5 opacity-20" />
+                                    <span>Sin imagen</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </section>
+
+                {/* SECTION 4: COMPLETION */}
+                <section>
+                    <h3 className="text-[10px] font-bold text-eco-400 uppercase tracking-widest mb-3 border-b border-dark-700 pb-2 flex items-center gap-2">
+                        <span>Pantalla Final</span>
+                    </h3>
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-xs font-medium text-dark-muted mb-1.5">Título Agradecimiento</label>
+                            <input 
+                                type="text" 
+                                value={thankYou.title}
+                                onChange={(e) => setThankYou({...thankYou, title: e.target.value})}
+                                className={inputClass}
+                            />
+                        </div>
+                        <div>
+                        <label className="block text-xs font-medium text-dark-muted mb-1.5">Mensaje</label>
+                        <textarea 
+                            value={thankYou.message}
+                            onChange={(e) => setThankYou({...thankYou, message: e.target.value})}
+                            rows={4}
+                            className={inputClass + " resize-none text-sm leading-relaxed"}
+                        />
+                        <div className="mt-2 text-[10px] text-dark-muted bg-dark-900 px-2 py-1 rounded inline-block border border-dark-700">
+                            Tip: Usa <span className="text-eco-400 font-mono">@Etiqueta</span> para insertar datos dinámicos.
+                        </div>
+                        </div>
+                        <div>
+                        <label className="block text-xs font-medium text-dark-muted mb-1.5">Texto del Botón</label>
+                        <input 
+                            type="text" 
+                            value={thankYou.buttonText}
+                            onChange={(e) => setThankYou({...thankYou, buttonText: e.target.value})}
+                            className={inputClass}
+                        />
+                        </div>
+                    </div>
+                </section>
               </div>
             )}
           </div>
@@ -398,22 +416,34 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
                     </div>
                     <div className="w-32">
                        <label className="block text-[10px] uppercase text-dark-muted font-bold mb-1 tracking-wider">Tipo</label>
-                       <div className="text-xs font-medium text-eco-400 py-1.5 px-3 bg-eco-500/10 rounded border border-eco-500/20 text-center">
-                           {field.type.replace(/_/g, ' ')}
+                       <div className="text-xs font-medium text-eco-400 py-1.5 px-3 bg-eco-500/10 rounded border border-eco-500/20 text-center flex items-center justify-center gap-2">
+                           {field.type === FieldType.SHORT_TEXT && <TextIcon className="w-3 h-3" />}
+                           {field.type === FieldType.LONG_TEXT && <TextIcon className="w-3 h-3" />}
+                           {field.type === FieldType.NUMBER && <HashIcon className="w-3 h-3" />}
+                           {field.type === FieldType.SINGLE_SELECT && <ListIcon className="w-3 h-3" />}
+                           {field.type === FieldType.CHECKBOX && <ListCheckIcon className="w-3 h-3" />}
+                           {field.type === FieldType.DATE && <CalendarIcon className="w-3 h-3" />}
+                           {field.type === FieldType.TIME && <ClockIcon className="w-3 h-3" />}
+                           {field.type === FieldType.IMAGE_UPLOAD && <ImageIcon className="w-3 h-3" />}
+                           <span className="capitalize">{field.type.replace(/_/g, ' ')}</span>
                        </div>
                     </div>
                   </div>
 
                   <div className="pt-2 flex flex-wrap gap-6 items-center">
-                    <label className="flex items-center gap-2 cursor-pointer select-none">
-                      <input 
-                        type="checkbox" 
-                        checked={field.required}
-                        onChange={(e) => updateField(field.id, { required: e.target.checked })}
-                        className="rounded text-eco-500 focus:ring-eco-500 bg-dark-950 border-dark-600 w-4 h-4"
-                      />
-                      <span className="text-sm text-dark-muted group-hover:text-white transition-colors">Obligatorio</span>
-                    </label>
+                    
+                    {/* OBLIGATORY PILL BUTTON */}
+                    <button 
+                      onClick={() => updateField(field.id, { required: !field.required })}
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold transition-all select-none ${
+                        field.required 
+                          ? 'bg-eco-500 text-dark-900 shadow-[0_0_10px_rgba(34,197,94,0.4)]' 
+                          : 'bg-dark-900 border border-dark-700 text-dark-muted hover:border-dark-500'
+                      }`}
+                    >
+                      {field.required && <CheckIcon className="w-3 h-3" />}
+                      {field.required ? 'Obligatorio' : 'Opcional'}
+                    </button>
 
                     {field.type === FieldType.NUMBER && (
                       <div className="flex gap-2 items-center text-sm">
@@ -502,7 +532,17 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
 
       <style>{`
         .field-btn {
-            @apply text-left px-4 py-3 bg-dark-900/50 hover:bg-eco-500/10 hover:text-eco-400 text-dark-muted rounded-xl text-sm font-medium transition-colors border border-transparent hover:border-eco-500/20 w-full;
+            @apply text-left px-4 py-3 bg-dark-700/50 hover:bg-dark-700 hover:text-white text-dark-muted rounded-xl text-sm font-medium transition-all border border-dark-700 hover:border-eco-500/30 w-full shadow-sm;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #374151;
+          border-radius: 4px;
         }
       `}</style>
     </div>
