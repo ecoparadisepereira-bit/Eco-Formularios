@@ -29,11 +29,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const handleShare = (form: FormSchema) => {
-    const encoded = encodeFormToUrl(form);
+    // NUEVO: Generar enlace corto basado en ID
     const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     const currentBase = window.location.href.split('?')[0].replace(/\/$/, '');
     const targetBase = isLocal ? PRODUCTION_URL.replace(/\/$/, '') : currentBase;
-    const url = `${targetBase}?data=${encodeURIComponent(encoded)}`;
+    
+    // Solo usamos el ID ahora
+    const url = `${targetBase}?id=${form.id}`;
     
     navigator.clipboard.writeText(url).then(() => {
       setCopiedId(form.id);
@@ -94,9 +96,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <h3 className="text-xl font-bold text-gray-900 mb-2 truncate" title={form.title}>{form.title}</h3>
                 <p className="text-sm text-gray-500 line-clamp-2 h-10">{form.description || 'Sin descripción'}</p>
                 <div className="mt-4 text-xs text-gray-400 font-medium flex items-center gap-2">
-                   <span className="bg-gray-100 px-2 py-1 rounded">{form.fields.length} campos</span>
+                   <span className="bg-gray-100 px-2 py-1 rounded font-mono">{form.id}</span>
                    <span>•</span>
-                   <span>Guardado en Cloud</span>
+                   <span>Cloud Sync</span>
                 </div>
               </div>
               
@@ -106,14 +108,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   className={`col-span-2 flex items-center justify-center gap-2 py-2 px-3 ${copiedId === form.id ? 'bg-green-600 text-white' : 'bg-green-50 text-green-800'} font-medium rounded-lg hover:brightness-95 transition-all text-sm shadow-sm`}
                 >
                   <LinkIcon className="w-4 h-4" />
-                  {copiedId === form.id ? '¡Enlace Copiado!' : 'Copiar Enlace Público'}
+                  {copiedId === form.id ? '¡Link Corto Copiado!' : 'Copiar Link Corto'}
                 </button>
                 <button 
                   onClick={() => onViewResponses(form)}
                   className="flex items-center justify-center gap-2 py-2 px-3 bg-white border border-gray-200 text-gray-700 font-medium rounded-lg hover:border-green-300 hover:text-green-700 transition-all text-sm shadow-sm"
                 >
                   <TableIcon className="w-4 h-4" />
-                  Local
+                  Ver Datos
                 </button>
                 <button 
                   onClick={() => onViewClient(form)}

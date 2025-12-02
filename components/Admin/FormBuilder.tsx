@@ -33,6 +33,9 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
   const [fields, setFields] = useState<FormField[]>(initialData?.fields || []);
   const [thankYou, setThankYou] = useState(initialData?.thankYouScreen || defaultThankYou);
   const [googleSheetUrl, setGoogleSheetUrl] = useState(initialData?.googleSheetUrl || DEFAULT_SHEET_URL);
+  
+  // NEW: Allow editing ID
+  const [customId, setCustomId] = useState(initialData?.id || generateId());
 
   const handleAiGenerate = async () => {
     if (!aiPrompt.trim()) return;
@@ -81,9 +84,14 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
 
   const handleSave = async () => {
     if (!title.trim()) return alert("El título es obligatorio");
+    
+    // Validar ID personalizado
+    const cleanId = customId.trim().replace(/[^a-zA-Z0-9-_]/g, '');
+    if (!cleanId) return alert("El ID personalizado no es válido.");
+
     setIsSaving(true);
     const newForm: FormSchema = {
-      id: initialData?.id || generateId(),
+      id: cleanId, // Use custom ID
       title,
       description,
       fields,
@@ -93,7 +101,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
       googleSheetUrl: googleSheetUrl.trim()
     };
     await onSave(newForm);
-    // Note: onSave in App.tsx switches view, so we don't need to unset isSaving typically, but safe to do so.
     setIsSaving(false);
   };
 
@@ -162,9 +169,27 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
               </div>
             ) : (
               <div className="space-y-4">
+                
+                {/* NEW: Custom ID Input */}
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Personalizar Enlace (ID)</label>
+                    <div className="flex items-center">
+                        <span className="bg-gray-100 border border-r-0 border-gray-300 rounded-l-md px-2 py-2 text-xs text-gray-500 font-mono">?id=</span>
+                        <input 
+                            type="text" 
+                            value={customId}
+                            onChange={(e) => setCustomId(e.target.value)}
+                            className="w-full border rounded-r-md px-3 py-2 text-sm focus:ring-2 focus:ring-green-700 outline-none font-mono text-green-800"
+                            placeholder="ej: reserva-hotel"
+                        />
+                    </div>
+                    <p className="text-[10px] text-gray-400 mt-1">
+                      Solo letras, números y guiones. Cambiar esto romperá los enlaces antiguos.
+                    </p>
+                </div>
+
                 <div className="bg-green-50 p-3 rounded-lg border border-green-100">
                     <label className="block text-xs font-bold text-green-800 mb-1 uppercase">Conexión Google Sheets</label>
-                    <p className="text-xs text-green-700 mb-2">URL del Script de Google Apps (Base de Datos):</p>
                     <input 
                     type="url" 
                     value={googleSheetUrl}
@@ -172,9 +197,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
                     className="w-full border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 outline-none bg-white text-gray-500"
                     readOnly
                     />
-                    <p className="text-[10px] text-green-600 mt-2 font-medium">
-                      * Configurado por defecto para Ecoparadise.
-                    </p>
                 </div>
 
                 <div className="border-t pt-4">

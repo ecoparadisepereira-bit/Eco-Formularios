@@ -19,12 +19,20 @@ function App() {
   const [isPublicView, setIsPublicView] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoadingForms, setIsLoadingForms] = useState(false);
+  const [loadingPublicForm, setLoadingPublicForm] = useState(false);
 
   useEffect(() => {
-    // 1. Check for Shared URL (?data=...)
     const params = new URLSearchParams(window.location.search);
-    const sharedData = params.get('data');
+    
+    // 1. Check for Short ID (?id=...) - NUEVA LÓGICA
+    const shortId = params.get('id');
+    if (shortId) {
+        loadPublicFormById(shortId);
+        return;
+    }
 
+    // 2. Check for Legacy Shared URL (?data=...)
+    const sharedData = params.get('data');
     if (sharedData) {
         const sharedForm = decodeFormFromUrl(sharedData);
         if (sharedForm) {
@@ -38,7 +46,7 @@ function App() {
         }
     }
 
-    // 2. If not shared, check Admin Session
+    // 3. If not shared, check Admin Session
     const session = localStorage.getItem('novaform_session');
     if (session === 'true') {
       setIsLoggedIn(true);
@@ -46,6 +54,24 @@ function App() {
       loadFormsFromCloud();
     }
   }, []);
+
+  const loadPublicFormById = async (id: string) => {
+      setLoadingPublicForm(true);
+      try {
+          const form = await storageService.fetchFormById(id);
+          if (form) {
+              setCurrentForm(form);
+              setIsPublicView(true);
+              setView('client');
+          } else {
+              setError("No se encontró el formulario solicitado. Verifica el enlace.");
+          }
+      } catch (e) {
+          setError("Error de conexión al buscar el formulario.");
+      } finally {
+          setLoadingPublicForm(false);
+      }
+  };
 
   const loadFormsFromCloud = async () => {
     setIsLoadingForms(true);
@@ -94,7 +120,7 @@ function App() {
 
   const handleSaveForm = async (form: FormSchema) => {
     setIsLoadingForms(true);
-    setView('dashboard'); // Switch immediately to show loading
+    setView('dashboard'); 
     await storageService.saveForm(form);
     await loadFormsFromCloud();
   };
@@ -111,6 +137,16 @@ function App() {
 
   // --- RENDERING ---
 
+  if (loadingPublicForm) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
+            <div className="w-12 h-12 border-4 border-green-200 border-t-[#043200] rounded-full animate-spin mb-4"></div>
+            <h2 className="text-xl font-bold text-[#043200]">Cargando Formulario...</h2>
+            <p className="text-gray-500">Conectando con Ecoparadise Cloud</p>
+        </div>
+      );
+  }
+
   if (error) {
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
@@ -118,13 +154,13 @@ function App() {
                 <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
                     <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
                 </div>
-                <h2 className="text-xl font-bold text-gray-900 mb-2">Enlace Inválido</h2>
+                <h2 className="text-xl font-bold text-gray-900 mb-2">Error</h2>
                 <p className="text-gray-500">{error}</p>
                 <button 
-                    onClick={() => { setError(null); window.history.replaceState({}, '', window.location.pathname); }} 
+                    onClick={() => { setError(null); window.history.replaceState({}, '', window.location.pathname); window.location.reload(); }} 
                     className="mt-6 px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
                 >
-                    Ir al Inicio
+                    Volver al Inicio
                 </button>
             </div>
         </div>

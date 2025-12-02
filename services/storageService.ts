@@ -21,6 +21,26 @@ export const storageService = {
     }
   },
 
+  fetchFormById: async (id: string): Promise<FormSchema | null> => {
+      try {
+        // Obtenemos todos los formularios y filtramos en el cliente (Estrategia más segura para este backend)
+        const response = await fetch(MASTER_SHEET_URL, {
+            method: 'POST',
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify({ action: 'get_forms' })
+        });
+        const data = await response.json();
+        if (Array.isArray(data)) {
+            const found = data.find((f: any) => f.id === id);
+            return found || null;
+        }
+        return null;
+      } catch (e) {
+          console.error("Error fetching specific form", e);
+          return null;
+      }
+  },
+
   saveForm: async (form: FormSchema): Promise<void> => {
     try {
       await fetch(MASTER_SHEET_URL, {
@@ -61,7 +81,6 @@ export const storageService = {
        // CRITICAL: Use the custom sheet URL if provided, otherwise fallback to Master
        const targetUrl = sheetUrl && sheetUrl.length > 10 ? sheetUrl : MASTER_SHEET_URL;
 
-       // IMPORTANTE: NO enviamos formId en el cuerpo para pedir TODAS las filas.
        const response = await fetch(targetUrl, {
         method: 'POST',
         headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -72,20 +91,15 @@ export const storageService = {
       
       const rawData = await response.json();
       
-      // DIAGNÓSTICO: Si recibimos { result: "success" } pero no un array, 
-      // significa que el script ejecutó la lógica de GUARDAR (fallback) en lugar de LEER.
       if (!Array.isArray(rawData) && rawData && rawData.result === 'success') {
           throw new Error("SCRIPT_OUTDATED");
       }
 
-      // Mapear datos planos del Excel a estructura FormResponse
       if (Array.isArray(rawData)) {
         return rawData.map((row: any) => {
-            // FIX CRÍTICO: El nuevo script devuelve { answers: {...}, submittedAt: ... }
-            // Si 'row.answers' existe, USARLO. Si no, usar 'row' (legacy).
+            // FIX: Desempaquetar respuestas anidadas del nuevo Script
             const realAnswers = row.answers ? row.answers : row;
             
-            // Preferir submittedAt del script, sino buscar Fecha, sino ahora.
             let time = Date.now();
             if (row.submittedAt) time = new Date(row.submittedAt).getTime();
             else if (row.Fecha) time = new Date(row.Fecha).getTime();
