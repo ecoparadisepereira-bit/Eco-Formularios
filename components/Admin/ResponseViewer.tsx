@@ -29,6 +29,19 @@ export const ResponseViewer: React.FC<ResponseViewerProps> = ({ form, onBack }) 
     return foundKey ? answers[foundKey] : '';
   };
 
+  // Helper para renderizar celdas de forma segura (evita [object Object])
+  const renderSafeValue = (val: any) => {
+    if (val === null || val === undefined) return '-';
+    if (typeof val === 'object') {
+        try {
+            return JSON.stringify(val);
+        } catch (e) {
+            return '[Dato Complejo]';
+        }
+    }
+    return String(val);
+  };
+
   const loadData = async () => {
     setLoading(true);
     setErrorType('none');
@@ -106,14 +119,13 @@ export const ResponseViewer: React.FC<ResponseViewerProps> = ({ form, onBack }) 
          const keys = Object.keys(allRawResponses[0]?.answers || {}).filter(k => k !== 'Fecha' && k !== 'formId');
          answerCells = keys.map(k => {
              const val = r.answers[k];
-             return `"${String(val || '').replace(/"/g, '""')}"`;
+             return `"${renderSafeValue(val).replace(/"/g, '""')}"`;
          });
       } else {
          answerCells = form.fields.map(f => {
             let val = getFuzzyValue(r.answers, f.label);
             if (f.type === FieldType.IMAGE_UPLOAD && val) return '[Imagen Adjunta]';
-            if (val === null || val === undefined) return '';
-            return `"${String(val).replace(/"/g, '""')}"`;
+            return `"${renderSafeValue(val).replace(/"/g, '""')}"`;
          });
       }
       return [date, ...answerCells].join(',');
@@ -276,7 +288,7 @@ export const ResponseViewer: React.FC<ResponseViewerProps> = ({ form, onBack }) 
                       {showAllRaw ? (
                           Object.keys(allRawResponses[0]?.answers || {}).filter(k => k !== 'Fecha' && k !== 'formId').map(key => (
                               <td key={key} className="px-6 py-4 text-sm text-gray-800">
-                                  {String(response.answers[key] || '-')}
+                                  {renderSafeValue(response.answers[key])}
                               </td>
                           ))
                       ) : (
@@ -300,7 +312,7 @@ export const ResponseViewer: React.FC<ResponseViewerProps> = ({ form, onBack }) 
                                     </a>
                                 </div>
                             ) : (
-                                <span className="line-clamp-2" title={String(val)}>{val || '-'}</span>
+                                <span className="line-clamp-2" title={String(val)}>{renderSafeValue(val)}</span>
                             )}
                             </td>
                         )})

@@ -74,19 +74,29 @@ export const storageService = {
       
       // DIAGNÓSTICO: Si recibimos { result: "success" } pero no un array, 
       // significa que el script ejecutó la lógica de GUARDAR (fallback) en lugar de LEER.
-      // Esto pasa cuando el usuario no ha desplegado la NUEVA versión del script.
       if (!Array.isArray(rawData) && rawData && rawData.result === 'success') {
           throw new Error("SCRIPT_OUTDATED");
       }
 
       // Mapear datos planos del Excel a estructura FormResponse
       if (Array.isArray(rawData)) {
-        return rawData.map((row: any) => ({
-            id: Math.random().toString(36).substr(2, 9), // ID temporal para la vista
-            formId: row.formId || 'unknown', // Usamos el del excel o desconocido
-            submittedAt: row.Fecha ? new Date(row.Fecha).getTime() : Date.now(),
-            answers: row // Pasamos todo el objeto fila como respuestas
-        }));
+        return rawData.map((row: any) => {
+            // FIX CRÍTICO: El nuevo script devuelve { answers: {...}, submittedAt: ... }
+            // Si 'row.answers' existe, USARLO. Si no, usar 'row' (legacy).
+            const realAnswers = row.answers ? row.answers : row;
+            
+            // Preferir submittedAt del script, sino buscar Fecha, sino ahora.
+            let time = Date.now();
+            if (row.submittedAt) time = new Date(row.submittedAt).getTime();
+            else if (row.Fecha) time = new Date(row.Fecha).getTime();
+
+            return {
+                id: Math.random().toString(36).substr(2, 9),
+                formId: row.formId || 'unknown',
+                submittedAt: time,
+                answers: realAnswers 
+            };
+        });
       }
       return [];
     } catch (e: any) {
@@ -98,7 +108,6 @@ export const storageService = {
     }
   },
 
-  // Método legacy local (ya no se usa como fuente principal)
   saveResponseLocal: (response: FormResponse): void => {
      // No-op
   },
