@@ -17,6 +17,21 @@ export const ResponseViewer: React.FC<ResponseViewerProps> = ({ form, onBack }) 
   
   const [viewingReceipt, setViewingReceipt] = useState<FormResponse | null>(null);
 
+  // Check if form has financials (Exact type or smart keyword)
+  const hasFinancials = form.fields.some(f => 
+    f.type === FieldType.PRODUCT || 
+    f.type === FieldType.PAYMENT ||
+    (f.type === FieldType.NUMBER && /abono|pago|anticipo|seña|adelanto/i.test(f.label))
+  );
+
+  const formatMoney = (amount: any) => {
+      if (amount === 0) return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(0);
+      if (!amount) return '-';
+      const num = parseFloat(amount);
+      if (isNaN(num)) return amount;
+      return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
+  };
+
   const getFuzzyValue = (answers: any, label: string) => {
     if (!answers) return '';
     if (answers[label] !== undefined) return answers[label];
@@ -31,6 +46,50 @@ export const ResponseViewer: React.FC<ResponseViewerProps> = ({ form, onBack }) 
         try { return JSON.stringify(val); } catch (e) { return '[Obj]'; }
     }
     return String(val);
+  };
+
+  // Recalculate totals on the fly if missing from DB (Backward compatibility)
+  const getDerivedFinancials = (response: FormResponse) => {
+      // Try to get stored values first
+      let total = parseFloat(response.answers['Total Calculado'] as string);
+      let paid = parseFloat(response.answers['Total Abono'] as string);
+      
+      // If not stored (NaN), recalculate based on schema + answers
+      if (isNaN(total) || isNaN(paid)) {
+          total = 0;
+          paid = 0;
+          
+          form.fields.forEach(field => {
+               // Products
+               if (field.type === FieldType.PRODUCT && field.productOptions) {
+                  const val = getFuzzyValue(response.answers, field.label);
+                  let selected: string[] = [];
+                  if (Array.isArray(val)) selected = val;
+                  else if (typeof val === 'string') selected = val.split(',').map(s => s.trim());
+
+                  selected.forEach(lbl => {
+                      const opt = field.productOptions?.find(o => o.label === lbl);
+                      if (opt) total += opt.price;
+                  });
+               }
+
+               // Payments (Smart Detect)
+               const isExplicitPayment = field.type === FieldType.PAYMENT;
+               const isImplicitPayment = field.type === FieldType.NUMBER && /abono|pago|anticipo|seña|adelanto/i.test(field.label);
+               
+               if (isExplicitPayment || isImplicitPayment) {
+                   const valStr = getFuzzyValue(response.answers, field.label);
+                   const val = parseFloat(String(valStr || '0').replace(/[^0-9.-]+/g,""));
+                   if (!isNaN(val)) paid += val;
+               }
+          });
+      }
+      
+      // Safety check if total was explicitly 0 in DB
+      if (response.answers['Total Calculado'] === 0) total = 0;
+      if (response.answers['Total Abono'] === 0) paid = 0;
+
+      return { total, paid, remaining: total - paid };
   };
 
   const loadData = async () => {
@@ -73,7 +132,7 @@ export const ResponseViewer: React.FC<ResponseViewerProps> = ({ form, onBack }) 
   const downloadCSV = () => {
     const headers = showAllRaw 
         ? ['Fecha', ...Object.keys(allRawResponses[0]?.answers || {}).filter(k => k !== 'Fecha' && k !== 'formId')]
-        : ['Fecha Envío', ...form.fields.map(f => f.label.replace(/,/g, ''))]; 
+        : ['Fecha Envío', ...form.fields.map(f => f.label.replace(/,/g, '')), ...(hasFinancials ? ['Total', 'Abono', 'Pendiente'] : [])]; 
     const rows = filteredResponses.map(r => {
       const date = new Date(r.submittedAt).toLocaleString();
       let answerCells: string[] = [];
@@ -82,6 +141,12 @@ export const ResponseViewer: React.FC<ResponseViewerProps> = ({ form, onBack }) 
          answerCells = keys.map(k => `"${renderSafeValue(r.answers[k]).replace(/"/g, '""')}"`);
       } else {
          answerCells = form.fields.map(f => `"${renderSafeValue(getFuzzyValue(r.answers, f.label)).replace(/"/g, '""')}"`);
+         if (hasFinancials) {
+             const { total, paid, remaining } = getDerivedFinancials(r);
+             answerCells.push(`"${formatMoney(total)}"`);
+             answerCells.push(`"${formatMoney(paid)}"`);
+             answerCells.push(`"${formatMoney(remaining)}"`);
+         }
       }
       return [date, ...answerCells].join(',');
     });
@@ -104,6 +169,14 @@ export const ResponseViewer: React.FC<ResponseViewerProps> = ({ form, onBack }) 
         const regex = new RegExp(`@${field.label}`, 'gi');
         message = message.replace(regex, `<span class="font-bold text-dark-900">${displayValue}</span>`);
     });
+    
+    // Interpolate financials using safe derived values
+    const { total, paid, remaining } = getDerivedFinancials(viewingReceipt);
+
+    message = message.replace(/@total/gi, `<span class="font-bold text-dark-900">${formatMoney(total)}</span>`);
+    message = message.replace(/@abono/gi, `<span class="font-bold text-dark-900">${formatMoney(paid)}</span>`);
+    message = message.replace(/@pendiente/gi, `<span class="font-bold text-dark-900">${formatMoney(remaining)}</span>`);
+
     return message.replace(/\n/g, '<br/>');
   };
 
@@ -174,9 +247,18 @@ export const ResponseViewer: React.FC<ResponseViewerProps> = ({ form, onBack }) 
                             <th key={key} className="px-6 py-4 text-xs font-bold text-dark-muted uppercase tracking-wider min-w-[150px]">{key}</th>
                         ))
                     ) : (
-                        form.fields.map(field => (
-                            <th key={field.id} className="px-6 py-4 text-xs font-bold text-dark-muted uppercase tracking-wider min-w-[150px]">{field.label}</th>
-                        ))
+                        <>
+                            {form.fields.map(field => (
+                                <th key={field.id} className="px-6 py-4 text-xs font-bold text-dark-muted uppercase tracking-wider min-w-[150px]">{field.label}</th>
+                            ))}
+                            {hasFinancials && (
+                                <>
+                                    <th className="px-6 py-4 text-xs font-bold text-eco-400 uppercase tracking-wider min-w-[100px]">Total</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-eco-400 uppercase tracking-wider min-w-[100px]">Abono</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-red-400 uppercase tracking-wider min-w-[100px]">Pendiente</th>
+                                </>
+                            )}
+                        </>
                     )}
                     </tr>
                 </thead>
@@ -186,7 +268,9 @@ export const ResponseViewer: React.FC<ResponseViewerProps> = ({ form, onBack }) 
                     ) : filteredResponses.length === 0 ? (
                         <tr><td colSpan={20} className="px-6 py-12 text-center text-dark-muted italic">Sin datos encontrados</td></tr>
                     ) : (
-                    filteredResponses.map((response) => (
+                    filteredResponses.map((response) => {
+                        const financials = hasFinancials ? getDerivedFinancials(response) : null;
+                        return (
                         <tr key={response.id} className="hover:bg-dark-700/50 transition-colors group">
                         <td className="px-6 py-4 text-sm text-gray-300 whitespace-nowrap font-mono text-xs">
                             {new Date(response.submittedAt).toLocaleString()}
@@ -205,20 +289,29 @@ export const ResponseViewer: React.FC<ResponseViewerProps> = ({ form, onBack }) 
                                 <td key={key} className="px-6 py-4 text-sm text-gray-300">{renderSafeValue(response.answers[key])}</td>
                             ))
                         ) : (
-                            form.fields.map(field => {
-                                const val = getFuzzyValue(response.answers, field.label);
-                                return (
-                                <td key={field.id} className="px-6 py-4 text-sm text-gray-300">
-                                {field.type === FieldType.IMAGE_UPLOAD && val ? (
-                                    <a href={val as string} target="_blank" className="text-eco-400 hover:underline text-xs">Ver Imagen</a>
-                                ) : (
-                                    <span className="line-clamp-1">{renderSafeValue(val)}</span>
+                            <>
+                                {form.fields.map(field => {
+                                    const val = getFuzzyValue(response.answers, field.label);
+                                    return (
+                                    <td key={field.id} className="px-6 py-4 text-sm text-gray-300">
+                                    {field.type === FieldType.IMAGE_UPLOAD && val ? (
+                                        <a href={val as string} target="_blank" className="text-eco-400 hover:underline text-xs">Ver Imagen</a>
+                                    ) : (
+                                        <span className="line-clamp-1">{renderSafeValue(val)}</span>
+                                    )}
+                                    </td>
+                                )})}
+                                {hasFinancials && financials && (
+                                    <>
+                                        <td className="px-6 py-4 text-sm font-bold text-eco-400">{formatMoney(financials.total)}</td>
+                                        <td className="px-6 py-4 text-sm font-bold text-white">{formatMoney(financials.paid)}</td>
+                                        <td className="px-6 py-4 text-sm font-bold text-red-400">{formatMoney(financials.remaining)}</td>
+                                    </>
                                 )}
-                                </td>
-                            )})
+                            </>
                         )}
                         </tr>
-                    ))
+                    )})
                     )}
                 </tbody>
                 </table>

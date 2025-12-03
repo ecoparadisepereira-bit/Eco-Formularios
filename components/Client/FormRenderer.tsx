@@ -103,6 +103,39 @@ export const FormRenderer: React.FC<FormRendererProps> = ({ form, onBack }) => {
     return Object.keys(newErrors).length === 0;
   };
 
+  // Financial Calculations
+  const calculateFinancials = () => {
+      let total = 0;
+      let paid = 0;
+
+      form.fields.forEach(field => {
+          // Sum Products
+          if (field.type === FieldType.PRODUCT && field.productOptions) {
+              const selectedLabels = answers[field.id] as string[];
+              if (Array.isArray(selectedLabels)) {
+                  selectedLabels.forEach(lbl => {
+                      const opt = field.productOptions?.find(o => o.label === lbl);
+                      if (opt) total += opt.price;
+                  });
+              }
+          }
+          
+          // Sum Payments (Explicit Type OR Smart Keyword Detection)
+          const isExplicitPayment = field.type === FieldType.PAYMENT;
+          // Detectar palabras clave en campos numéricos (Abono, Pago, Anticipo...)
+          const isImplicitPayment = field.type === FieldType.NUMBER && /abono|pago|anticipo|seña|adelanto/i.test(field.label);
+
+          if (isExplicitPayment || isImplicitPayment) {
+              // Limpiar el valor de caracteres no numéricos y parsear
+              const valStr = String(answers[field.id] || '0');
+              const val = parseFloat(valStr.replace(/[^0-9.-]+/g,""));
+              if (!isNaN(val)) paid += val;
+          }
+      });
+
+      return { total, paid, remaining: total - paid };
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
@@ -126,10 +159,10 @@ export const FormRenderer: React.FC<FormRendererProps> = ({ form, onBack }) => {
     });
     
     // Auto-inject financials into the payload for records
-    if (total > 0) {
-        cleanData['Total Calculado'] = total;
-        cleanData['Saldo Pendiente'] = remaining;
-    }
+    // Always send if detected, even if 0
+    cleanData['Total Calculado'] = total;
+    cleanData['Total Abono'] = paid;
+    cleanData['Saldo Pendiente'] = remaining;
 
     try {
         const targetUrl = form.googleSheetUrl || SYSTEM_DEFAULT_SHEET_URL;
@@ -154,33 +187,10 @@ export const FormRenderer: React.FC<FormRendererProps> = ({ form, onBack }) => {
     }
   };
 
-  // Financial Calculations
-  const calculateFinancials = () => {
-      let total = 0;
-      let paid = 0;
-
-      form.fields.forEach(field => {
-          // Sum Products
-          if (field.type === FieldType.PRODUCT && field.productOptions) {
-              const selectedLabels = answers[field.id] as string[];
-              if (Array.isArray(selectedLabels)) {
-                  selectedLabels.forEach(lbl => {
-                      const opt = field.productOptions?.find(o => o.label === lbl);
-                      if (opt) total += opt.price;
-                  });
-              }
-          }
-          // Sum Payments
-          if (field.type === FieldType.PAYMENT) {
-              const val = parseFloat(answers[field.id]);
-              if (!isNaN(val)) paid += val;
-          }
-      });
-
-      return { total, paid, remaining: total - paid };
-  };
-
   const formatMoney = (amount: number) => {
+      // Show $0.00 even if 0
+      if (amount === 0) return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(0);
+      if (!amount) return '-';
       return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
   };
 
