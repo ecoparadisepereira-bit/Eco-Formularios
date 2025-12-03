@@ -1,15 +1,23 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dashboard } from './components/Admin/Dashboard';
 import { FormBuilder } from './components/Admin/FormBuilder';
 import { ResponseViewer } from './components/Admin/ResponseViewer';
 import { Login } from './components/Admin/Login';
+import { GlobalSettings } from './components/Admin/GlobalSettings';
 import { FormRenderer } from './components/Client/FormRenderer';
 import { storageService } from './services/storageService';
-import { FormSchema } from './types';
-import { LogOutIcon, SparklesIcon, TableIcon, PlusIcon, ParrotLogo } from './components/ui/Icons';
+import { FormSchema, AppConfig } from './types';
+import { LogOutIcon, SparklesIcon, TableIcon, PlusIcon, DynamicLogo, SettingsIcon } from './components/ui/Icons';
 import { decodeFormFromUrl } from './utils';
 
-type ViewState = 'login' | 'dashboard' | 'builder' | 'responses' | 'client';
+type ViewState = 'login' | 'dashboard' | 'builder' | 'responses' | 'client' | 'settings';
+
+const DEFAULT_CONFIG: AppConfig = {
+    appName: 'Ecoparadise',
+    logoUrl: 'https://cdn-icons-png.flaticon.com/512/3755/3755331.png',
+    faviconUrl: 'https://cdn-icons-png.flaticon.com/512/3755/3755331.png'
+};
 
 function App() {
   const [view, setView] = useState<ViewState>('login');
@@ -20,8 +28,19 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [isLoadingForms, setIsLoadingForms] = useState(false);
   const [loadingPublicForm, setLoadingPublicForm] = useState(false);
+  
+  // Global Settings State
+  const [appConfig, setAppConfig] = useState<AppConfig>(DEFAULT_CONFIG);
 
   useEffect(() => {
+    // Load Settings
+    const savedConfig = localStorage.getItem('app_global_config');
+    if (savedConfig) {
+        try {
+            setAppConfig(JSON.parse(savedConfig));
+        } catch(e) {}
+    }
+
     const params = new URLSearchParams(window.location.search);
     
     // Check for Short ID (?id=...)
@@ -54,6 +73,25 @@ function App() {
       loadFormsFromCloud();
     }
   }, []);
+
+  // Update DOM (Title & Favicon) when config changes
+  useEffect(() => {
+      document.title = appConfig.appName;
+      
+      let link = document.querySelector("link[rel*='icon']") as HTMLLinkElement;
+      if (!link) {
+          link = document.createElement('link');
+          link.type = 'image/png';
+          link.rel = 'icon';
+          document.getElementsByTagName('head')[0].appendChild(link);
+      }
+      link.href = appConfig.faviconUrl;
+  }, [appConfig]);
+
+  const saveAppConfig = (newConfig: AppConfig) => {
+      setAppConfig(newConfig);
+      localStorage.setItem('app_global_config', JSON.stringify(newConfig));
+  };
 
   const loadPublicFormById = async (id: string) => {
       setLoadingPublicForm(true);
@@ -172,7 +210,7 @@ function App() {
   }
 
   if (!isLoggedIn && view === 'login') {
-    return <Login onLogin={handleLogin} />;
+    return <Login onLogin={handleLogin} appConfig={appConfig} />;
   }
 
   return (
@@ -182,10 +220,10 @@ function App() {
       <aside className="w-64 bg-eco-950 border-r border-dark-800 flex-shrink-0 flex flex-col relative z-20">
         <div className="p-6 flex items-center gap-3">
             <div className="w-10 h-10 flex items-center justify-center">
-                <ParrotLogo className="w-10 h-10 drop-shadow-lg" />
+                <DynamicLogo src={appConfig.logoUrl} className="w-10 h-10 drop-shadow-lg" />
             </div>
             <div>
-                <h1 className="font-bold text-lg text-white leading-tight">Ecoparadise</h1>
+                <h1 className="font-bold text-lg text-white leading-tight">{appConfig.appName}</h1>
                 <p className="text-xs text-eco-400 font-medium">Admin Panel</p>
             </div>
         </div>
@@ -205,6 +243,14 @@ function App() {
             >
                 <PlusIcon className="w-5 h-5" />
                 <span className="font-medium">Crear Formulario</span>
+            </button>
+            
+            <button 
+                onClick={() => setView('settings')}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${view === 'settings' ? 'bg-eco-500/10 text-eco-400 border border-eco-500/20' : 'text-dark-muted hover:text-white hover:bg-dark-800'}`}
+            >
+                <SettingsIcon className="w-5 h-5" />
+                <span className="font-medium">Configuración</span>
             </button>
 
             <div className="pt-4 mt-4 border-t border-dark-800">
@@ -229,7 +275,7 @@ function App() {
                 </div>
                 <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-white truncate">Admin User</p>
-                    <p className="text-xs text-dark-muted truncate">admin@ecoparadise.com</p>
+                    <p className="text-xs text-dark-muted truncate">admin@{appConfig.appName.toLowerCase().replace(/\s/g,'')}.com</p>
                 </div>
                 <button 
                   onClick={handleLogout}
@@ -244,12 +290,17 @@ function App() {
 
       {/* MAIN CONTENT AREA */}
       <main className="flex-1 overflow-auto relative">
-        {/* Top Header Mockup for "Search" look from image */}
+        {/* Top Header Mockup */}
         <header className="sticky top-0 z-30 bg-dark-900/80 backdrop-blur-md border-b border-dark-800 px-8 py-4 flex justify-between items-center">
              <div className="flex items-center gap-4 text-dark-muted">
-                 <span className="text-sm">Ecoparadise</span>
+                 <span className="text-sm">{appConfig.appName}</span>
                  <span>/</span>
-                 <span className="text-white font-medium">{view === 'dashboard' ? 'Panel Principal' : view === 'builder' ? 'Editor' : 'Respuestas'}</span>
+                 <span className="text-white font-medium">
+                    {view === 'dashboard' ? 'Panel Principal' : 
+                     view === 'builder' ? 'Editor' : 
+                     view === 'settings' ? 'Configuración' :
+                     'Respuestas'}
+                 </span>
              </div>
              <div className="flex items-center gap-4">
                  <div className="bg-dark-800 border border-dark-700 rounded-full px-4 py-2 flex items-center gap-2 text-sm text-dark-muted w-64">
@@ -289,6 +340,13 @@ function App() {
                 form={currentForm}
                 onBack={() => setView('dashboard')}
             />
+            )}
+
+            {view === 'settings' && (
+                <GlobalSettings 
+                    config={appConfig}
+                    onSave={saveAppConfig}
+                />
             )}
 
             {view === 'client' && currentForm && (

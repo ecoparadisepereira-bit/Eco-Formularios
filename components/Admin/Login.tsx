@@ -1,11 +1,14 @@
+
 import React, { useState } from 'react';
-import { ParrotLogo } from '../ui/Icons';
+import { DynamicLogo } from '../ui/Icons';
+import { AppConfig } from '../../types';
 
 interface LoginProps {
   onLogin: () => void;
+  appConfig: AppConfig;
 }
 
-export const Login: React.FC<LoginProps> = ({ onLogin }) => {
+export const Login: React.FC<LoginProps> = ({ onLogin, appConfig }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -27,9 +30,9 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
       <div className="mb-8 flex flex-col items-center relative z-10">
         <div className="w-24 h-24 bg-white/5 rounded-full flex items-center justify-center text-dark-900 mb-6 shadow-glow border border-white/10">
-           <ParrotLogo className="w-16 h-16 drop-shadow-xl" />
+           <DynamicLogo src={appConfig.logoUrl} className="w-16 h-16 drop-shadow-xl" />
         </div>
-        <h1 className="text-4xl font-bold text-white tracking-tight text-center">Ecoparadise</h1>
+        <h1 className="text-4xl font-bold text-white tracking-tight text-center">{appConfig.appName}</h1>
         <p className="text-dark-muted mt-2">Plataforma de Gestión</p>
       </div>
 

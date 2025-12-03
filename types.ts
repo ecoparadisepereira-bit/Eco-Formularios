@@ -1,3 +1,4 @@
+
 // Enum for Field Types
 export enum FieldType {
   SHORT_TEXT = 'short_text',
@@ -64,4 +65,11 @@ export interface FormResponse {
   formId: string;
   submittedAt: number;
   answers: Record<string, string | number | string[] | null>; // Field ID -> Value
+}
+
+// Global App Configuration
+export interface AppConfig {
+  appName: string;
+  logoUrl: string;
+  faviconUrl: string;
 }
