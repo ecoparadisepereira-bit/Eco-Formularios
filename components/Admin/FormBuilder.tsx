@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { FormSchema, FieldType, FormField } from '../../types';
-import { PlusIcon, TrashIcon, SparklesIcon, GripVerticalIcon, ArrowLeftIcon, CalendarIcon, ClockIcon, ListCheckIcon, UploadCloudIcon, ImageIcon, CheckIcon, TextIcon, HashIcon, ListIcon } from '../ui/Icons';
+import { PlusIcon, TrashIcon, SparklesIcon, GripVerticalIcon, ArrowLeftIcon, CalendarIcon, ClockIcon, ListCheckIcon, UploadCloudIcon, ImageIcon, CheckIcon, TextIcon, HashIcon, ListIcon, TagIcon, DollarIcon } from '../ui/Icons';
 import { generateFormSchema } from '../../services/geminiService';
 
 interface FormBuilderProps {
@@ -13,7 +13,7 @@ const generateId = () => Math.random().toString(36).substr(2, 9);
 
 const defaultThankYou = {
   title: "¡Reserva Confirmada!",
-  message: "Hola @Nombre, en un momento nos comunicaremos contigo para confirmar tu reserva.",
+  message: "Hola @Nombre, el total de tu reserva es @Total. Has abonado @Abono y queda pendiente @Pendiente. Nos comunicaremos contigo pronto.",
   redirectUrl: "",
   buttonText: "Ver mis reservas"
 };
@@ -68,9 +68,10 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
     const newField: FormField = {
       id: generateId(),
       type,
-      label: 'Nuevo Campo',
+      label: type === FieldType.PAYMENT ? 'Abono / Pago Parcial' : 'Nuevo Campo',
       required: false,
       options: (type === FieldType.SINGLE_SELECT || type === FieldType.CHECKBOX) ? ['Opción 1', 'Opción 2'] : undefined,
+      productOptions: type === FieldType.PRODUCT ? [{ label: 'Producto 1', price: 0 }] : undefined,
     };
     setFields([...fields, newField]);
   };
@@ -91,6 +92,38 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
       setFields(newFields);
     }
   };
+
+  // Product Helper Functions
+  const addProductOption = (fieldId: string) => {
+      setFields(fields.map(f => {
+          if (f.id === fieldId && f.productOptions) {
+              return { ...f, productOptions: [...f.productOptions, { label: 'Nuevo Item', price: 0 }] };
+          }
+          return f;
+      }));
+  };
+
+  const updateProductOption = (fieldId: string, index: number, key: 'label' | 'price', value: any) => {
+      setFields(fields.map(f => {
+          if (f.id === fieldId && f.productOptions) {
+              const newOpts = [...f.productOptions];
+              newOpts[index] = { ...newOpts[index], [key]: value };
+              return { ...f, productOptions: newOpts };
+          }
+          return f;
+      }));
+  };
+
+  const removeProductOption = (fieldId: string, index: number) => {
+      setFields(fields.map(f => {
+          if (f.id === fieldId && f.productOptions) {
+              const newOpts = f.productOptions.filter((_, i) => i !== index);
+              return { ...f, productOptions: newOpts };
+          }
+          return f;
+      }));
+  };
+
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -210,6 +243,10 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
                 <p className="text-xs text-dark-muted font-bold uppercase mb-2 mt-4 tracking-wider ml-1">Selección</p>
                 <button onClick={() => handleAddField(FieldType.SINGLE_SELECT)} className="field-btn flex items-center gap-3"><ListIcon className="w-4 h-4 opacity-70" /> Selección Única</button>
                 <button onClick={() => handleAddField(FieldType.CHECKBOX)} className="field-btn flex items-center gap-3"><ListCheckIcon className="w-4 h-4 opacity-70" /> Casillas</button>
+
+                <p className="text-xs text-dark-muted font-bold uppercase mb-2 mt-4 tracking-wider ml-1">Ventas & Pagos</p>
+                <button onClick={() => handleAddField(FieldType.PRODUCT)} className="field-btn flex items-center gap-3 bg-eco-500/5 hover:bg-eco-500/10 border-eco-500/20"><TagIcon className="w-4 h-4 text-eco-400" /> Productos/Servicios</button>
+                <button onClick={() => handleAddField(FieldType.PAYMENT)} className="field-btn flex items-center gap-3 bg-eco-500/5 hover:bg-eco-500/10 border-eco-500/20"><DollarIcon className="w-4 h-4 text-eco-400" /> Abono / Pago</button>
 
                 <p className="text-xs text-dark-muted font-bold uppercase mb-2 mt-4 tracking-wider ml-1">Avanzado</p>
                 <button onClick={() => handleAddField(FieldType.DATE)} className="field-btn flex items-center gap-3"><CalendarIcon className="w-4 h-4 opacity-70" /> Fecha</button>
@@ -348,8 +385,8 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
                             rows={4}
                             className={inputClass + " resize-none text-sm leading-relaxed"}
                         />
-                        <div className="mt-2 text-[10px] text-dark-muted bg-dark-900 px-2 py-1 rounded inline-block border border-dark-700">
-                            Tip: Usa <span className="text-eco-400 font-mono">@Etiqueta</span> para insertar datos dinámicos.
+                        <div className="mt-2 text-[10px] text-dark-muted bg-dark-900 px-2 py-1 rounded inline-block border border-dark-700 leading-relaxed">
+                            Tip: Usa <span className="text-eco-400 font-mono">@Etiqueta</span>, <span className="text-eco-400 font-mono">@Total</span>, <span className="text-eco-400 font-mono">@Abono</span> o <span className="text-eco-400 font-mono">@Pendiente</span>.
                         </div>
                         </div>
                         <div>
@@ -414,7 +451,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
                         placeholder="Escribe la pregunta..."
                       />
                     </div>
-                    <div className="w-32">
+                    <div className="w-36">
                        <label className="block text-[10px] uppercase text-dark-muted font-bold mb-1 tracking-wider">Tipo</label>
                        <div className="text-xs font-medium text-eco-400 py-1.5 px-3 bg-eco-500/10 rounded border border-eco-500/20 text-center flex items-center justify-center gap-2">
                            {field.type === FieldType.SHORT_TEXT && <TextIcon className="w-3 h-3" />}
@@ -425,17 +462,19 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
                            {field.type === FieldType.DATE && <CalendarIcon className="w-3 h-3" />}
                            {field.type === FieldType.TIME && <ClockIcon className="w-3 h-3" />}
                            {field.type === FieldType.IMAGE_UPLOAD && <ImageIcon className="w-3 h-3" />}
+                           {field.type === FieldType.PRODUCT && <TagIcon className="w-3 h-3" />}
+                           {field.type === FieldType.PAYMENT && <DollarIcon className="w-3 h-3" />}
                            <span className="capitalize">{field.type.replace(/_/g, ' ')}</span>
                        </div>
                     </div>
                   </div>
 
-                  <div className="pt-2 flex flex-wrap gap-6 items-center">
+                  <div className="pt-2 flex flex-wrap gap-6 items-start">
                     
                     {/* OBLIGATORY PILL BUTTON */}
                     <button 
                       onClick={() => updateField(field.id, { required: !field.required })}
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold transition-all select-none ${
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold transition-all select-none mt-1 ${
                         field.required 
                           ? 'bg-eco-500 text-dark-900 shadow-[0_0_10px_rgba(34,197,94,0.4)]' 
                           : 'bg-dark-900 border border-dark-700 text-dark-muted hover:border-dark-500'
@@ -445,14 +484,15 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
                       {field.required ? 'Obligatorio' : 'Opcional'}
                     </button>
 
-                    {field.type === FieldType.NUMBER && (
+                    {/* Numeric Config */}
+                    {(field.type === FieldType.NUMBER || field.type === FieldType.PAYMENT) && (
                       <div className="flex gap-2 items-center text-sm">
                         <input 
                           type="number" 
                           placeholder="Min"
                           value={field.validation?.min || ''}
                           onChange={(e) => updateField(field.id, { validation: { ...field.validation, min: parseInt(e.target.value) || undefined } })}
-                          className="w-16 !bg-[#050505] border border-dark-600 rounded px-2 py-1 text-white text-xs"
+                          className="w-20 !bg-[#050505] border border-dark-600 rounded px-3 py-1.5 text-white text-xs"
                         />
                         <span className="text-dark-600">-</span>
                         <input 
@@ -460,11 +500,12 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
                           placeholder="Max"
                           value={field.validation?.max || ''}
                           onChange={(e) => updateField(field.id, { validation: { ...field.validation, max: parseInt(e.target.value) || undefined } })}
-                          className="w-16 !bg-[#050505] border border-dark-600 rounded px-2 py-1 text-white text-xs"
+                          className="w-20 !bg-[#050505] border border-dark-600 rounded px-3 py-1.5 text-white text-xs"
                         />
                       </div>
                     )}
 
+                    {/* Standard Options */}
                     {(field.type === FieldType.SINGLE_SELECT || field.type === FieldType.CHECKBOX) && (
                       <div className="flex-1">
                         <input 
@@ -475,6 +516,44 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
                           placeholder="Opciones separadas por coma..."
                         />
                       </div>
+                    )}
+
+                    {/* PRODUCT EDITOR */}
+                    {field.type === FieldType.PRODUCT && (
+                        <div className="w-full bg-dark-900/50 p-4 rounded-xl border border-dark-700 mt-2">
+                             <div className="flex justify-between items-center mb-2">
+                                <label className="text-xs font-bold text-dark-muted uppercase tracking-wider">Lista de Productos / Servicios</label>
+                                <button onClick={() => addProductOption(field.id)} className="text-xs text-eco-400 hover:text-white font-medium flex items-center gap-1">
+                                    <PlusIcon className="w-3 h-3" /> Agregar Ítem
+                                </button>
+                             </div>
+                             <div className="space-y-2">
+                                 {field.productOptions?.map((opt, idx) => (
+                                     <div key={idx} className="flex gap-2 items-center">
+                                         <input 
+                                            type="text" 
+                                            value={opt.label}
+                                            onChange={(e) => updateProductOption(field.id, idx, 'label', e.target.value)}
+                                            placeholder="Nombre del Producto"
+                                            className="flex-1 !bg-[#050505] border border-dark-600 rounded px-3 py-1.5 text-white text-sm"
+                                         />
+                                         <div className="relative w-32">
+                                            <span className="absolute left-3 top-1.5 text-dark-muted text-sm">$</span>
+                                            <input 
+                                                type="number" 
+                                                value={opt.price}
+                                                onChange={(e) => updateProductOption(field.id, idx, 'price', parseFloat(e.target.value) || 0)}
+                                                placeholder="0.00"
+                                                className="w-full !bg-[#050505] border border-dark-600 rounded pl-6 pr-3 py-1.5 text-white text-sm text-right"
+                                            />
+                                         </div>
+                                         <button onClick={() => removeProductOption(field.id, idx)} className="p-1.5 text-dark-600 hover:text-red-400">
+                                            <TrashIcon className="w-4 h-4" />
+                                         </button>
+                                     </div>
+                                 ))}
+                             </div>
+                        </div>
                     )}
                   </div>
                 </div>

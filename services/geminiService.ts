@@ -27,8 +27,10 @@ export const generateFormSchema = async (prompt: string): Promise<Partial<FormSc
     - date (Birthdays, Booking dates)
     - time (Arrival times, Appointments)
     - image_upload (Photos, Documents)
+    - product (Items for sale/booking with prices)
+    - payment (Field for user to enter payment amount/deposit)
 
-    If the user doesn't specify details, infer reasonable defaults.
+    If the user mentions selling items, bookings with prices, or payments, use 'product' and 'payment' fields.
   `;
 
   try {
@@ -59,7 +61,9 @@ export const generateFormSchema = async (prompt: string): Promise<Partial<FormSc
                       'checkbox',
                       'date',
                       'time',
-                      'image_upload'
+                      'image_upload',
+                      'product',
+                      'payment'
                     ] 
                   },
                   required: { type: Type.BOOLEAN },
@@ -87,7 +91,7 @@ export const generateFormSchema = async (prompt: string): Promise<Partial<FormSc
     const processedFields = (result.fields || []).map((f: any) => ({
       ...f,
       id: generateId(),
-      validation: f.type === 'number' ? { min: 0 } : undefined // Basic default
+      validation: f.type === 'number' || f.type === 'payment' ? { min: 0 } : undefined // Basic default
     }));
 
     return {

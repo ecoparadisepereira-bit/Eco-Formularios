@@ -8,6 +8,8 @@ export enum FieldType {
   DATE = 'date',         // NEW
   TIME = 'time',         // NEW
   IMAGE_UPLOAD = 'image_upload',
+  PRODUCT = 'product',   // NEW: Products with prices
+  PAYMENT = 'payment',   // NEW: Payment amount input
 }
 
 // Validation Rules
@@ -18,6 +20,11 @@ export interface ValidationRules {
   acceptedFormats?: string[]; // e.g. ['image/jpeg', 'image/png']
 }
 
+export interface ProductOption {
+  label: string;
+  price: number;
+}
+
 // Field Definition
 export interface FormField {
   id: string;
@@ -26,6 +33,7 @@ export interface FormField {
   placeholder?: string;
   required: boolean;
   options?: string[]; // For Select and Checkbox
+  productOptions?: ProductOption[]; // For Product field
   validation?: ValidationRules;
 }
 
