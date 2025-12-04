@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dashboard } from './components/Admin/Dashboard';
 import { FormBuilder } from './components/Admin/FormBuilder';
@@ -8,7 +7,7 @@ import { GlobalSettings } from './components/Admin/GlobalSettings';
 import { FormRenderer } from './components/Client/FormRenderer';
 import { storageService } from './services/storageService';
 import { FormSchema, AppConfig } from './types';
-import { LogOutIcon, SparklesIcon, TableIcon, PlusIcon, DynamicLogo, SettingsIcon } from './components/ui/Icons';
+import { LogOutIcon, PlusIcon, DynamicLogo, SettingsIcon } from './components/ui/Icons';
 import { decodeFormFromUrl } from './utils';
 
 type ViewState = 'login' | 'dashboard' | 'builder' | 'responses' | 'client' | 'settings';
@@ -33,13 +32,20 @@ function App() {
   const [appConfig, setAppConfig] = useState<AppConfig>(DEFAULT_CONFIG);
 
   useEffect(() => {
-    // Load Settings
-    const savedConfig = localStorage.getItem('app_global_config');
-    if (savedConfig) {
-        try {
-            setAppConfig(JSON.parse(savedConfig));
-        } catch(e) {}
-    }
+    // Load Settings from Cloud
+    const initConfig = async () => {
+        const cloudConfig = await storageService.fetchGlobalConfig();
+        if (cloudConfig) {
+            setAppConfig(cloudConfig);
+        } else {
+             // Fallback to local if cloud fails or first run
+             const savedConfig = localStorage.getItem('app_global_config');
+             if (savedConfig) {
+                 try { setAppConfig(JSON.parse(savedConfig)); } catch(e) {}
+             }
+        }
+    };
+    initConfig();
 
     const params = new URLSearchParams(window.location.search);
     
@@ -88,8 +94,12 @@ function App() {
       link.href = appConfig.faviconUrl;
   }, [appConfig]);
 
-  const saveAppConfig = (newConfig: AppConfig) => {
+  const saveAppConfig = async (newConfig: AppConfig) => {
+      // Optimistic update
       setAppConfig(newConfig);
+      // Save to Cloud
+      await storageService.saveGlobalConfig(newConfig);
+      // Fallback local save
       localStorage.setItem('app_global_config', JSON.stringify(newConfig));
   };
 

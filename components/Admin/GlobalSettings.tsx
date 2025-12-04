@@ -1,25 +1,27 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { AppConfig } from '../../types';
 import { CheckIcon, ImageIcon, TextIcon } from '../ui/Icons';
 
 interface GlobalSettingsProps {
     config: AppConfig;
-    onSave: (newConfig: AppConfig) => void;
+    onSave: (newConfig: AppConfig) => Promise<void>;
 }
 
 export const GlobalSettings: React.FC<GlobalSettingsProps> = ({ config, onSave }) => {
     const [formData, setFormData] = useState<AppConfig>(config);
     const [saved, setSaved] = useState(false);
+    const [saving, setSaving] = useState(false);
 
     const handleChange = (key: keyof AppConfig, value: string) => {
         setFormData(prev => ({ ...prev, [key]: value }));
         setSaved(false);
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        onSave(formData);
+        setSaving(true);
+        await onSave(formData);
+        setSaving(false);
         setSaved(true);
         setTimeout(() => setSaved(false), 2000);
     };
@@ -90,13 +92,16 @@ export const GlobalSettings: React.FC<GlobalSettingsProps> = ({ config, onSave }
                 <div className="pt-4 border-t border-dark-700 flex justify-end">
                     <button 
                         type="submit"
-                        className="flex items-center gap-2 px-6 py-3 bg-eco-500 text-dark-900 font-bold rounded-xl hover:bg-eco-400 transition-all shadow-glow"
+                        disabled={saving}
+                        className="flex items-center gap-2 px-6 py-3 bg-eco-500 text-dark-900 font-bold rounded-xl hover:bg-eco-400 transition-all shadow-glow disabled:opacity-70 disabled:cursor-wait"
                     >
                         {saved ? (
                             <>
                                 <CheckIcon className="w-5 h-5" />
                                 ¡Guardado!
                             </>
+                        ) : saving ? (
+                            "Guardando..."
                         ) : (
                             "Guardar Configuración"
                         )}

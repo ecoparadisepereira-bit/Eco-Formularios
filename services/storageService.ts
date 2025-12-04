@@ -1,9 +1,45 @@
-import { FormSchema, FormResponse } from '../types';
+import { FormSchema, FormResponse, AppConfig } from '../types';
 
 // TU URL MAESTRA DE GOOGLE APPS SCRIPT
 const MASTER_SHEET_URL = "https://script.google.com/macros/s/AKfycbyQscuJzzO-2lQQiTwuNTL0-LrCQ-82LcVa8npwaK7AuG7LJa4sCLqJKSmL5qDZG851/exec";
 
 export const storageService = {
+  // --- Global Config (CLOUD SYNC) ---
+  fetchGlobalConfig: async (): Promise<AppConfig | null> => {
+      try {
+          const response = await fetch(MASTER_SHEET_URL, {
+              method: 'POST',
+              headers: { "Content-Type": "text/plain;charset=utf-8" },
+              body: JSON.stringify({ action: 'get_config' })
+          });
+          const data = await response.json();
+          if (data && data.appName) {
+              return data as AppConfig;
+          }
+          return null;
+      } catch (e) {
+          console.error("Error loading global config", e);
+          return null;
+      }
+  },
+
+  saveGlobalConfig: async (config: AppConfig): Promise<void> => {
+      try {
+          await fetch(MASTER_SHEET_URL, {
+              method: 'POST',
+              mode: 'no-cors',
+              headers: { 'Content-Type': 'text/plain' },
+              body: JSON.stringify({ 
+                  action: 'save_config', 
+                  config: config 
+              })
+          });
+      } catch (e) {
+          console.error("Error saving global config", e);
+          throw e;
+      }
+  },
+
   // --- Forms (CLOUD SYNC) ---
   
   fetchForms: async (): Promise<FormSchema[]> => {
