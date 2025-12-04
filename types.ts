@@ -72,4 +72,5 @@ export interface AppConfig {
   appName: string;
   logoUrl: string;
   faviconUrl: string;
+  loginImageUrl: string; // NEW: Customizable Login Hero Image
 }

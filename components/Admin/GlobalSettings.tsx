@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { AppConfig } from '../../types';
 import { CheckIcon, ImageIcon, TextIcon } from '../ui/Icons';
@@ -67,6 +68,31 @@ export const GlobalSettings: React.FC<GlobalSettingsProps> = ({ config, onSave }
                             <img src={formData.logoUrl} alt="Preview" className="w-full h-full object-contain" onError={(e) => e.currentTarget.style.display = 'none'} />
                         </div>
                     </div>
+                </div>
+
+                {/* Login Image URL */}
+                <div className="space-y-3">
+                    <label className="block text-sm font-bold text-gray-300 uppercase tracking-wide text-xs flex items-center gap-2">
+                        <ImageIcon className="w-4 h-4 text-eco-400" />
+                        Imagen de Portada (Login)
+                    </label>
+                    <div className="flex gap-4 items-start">
+                        <input 
+                            type="url" 
+                            value={formData.loginImageUrl || ''}
+                            onChange={(e) => handleChange('loginImageUrl', e.target.value)}
+                            className="flex-1 px-4 py-3 bg-dark-900 border border-dark-600 rounded-xl text-white outline-none focus:border-eco-500 focus:ring-1 focus:ring-eco-500 transition-all placeholder-dark-600"
+                            placeholder="https://..."
+                        />
+                        <div className="w-12 h-12 bg-dark-900 border border-dark-600 rounded-xl flex items-center justify-center overflow-hidden">
+                            {formData.loginImageUrl ? (
+                                <img src={formData.loginImageUrl} alt="Preview" className="w-full h-full object-cover" onError={(e) => e.currentTarget.style.display = 'none'} />
+                            ) : (
+                                <span className="text-[10px] text-dark-muted">Sin img</span>
+                            )}
+                        </div>
+                    </div>
+                    <p className="text-[10px] text-dark-muted">La imagen grande que aparece a la derecha en la pantalla de inicio de sesión.</p>
                 </div>
 
                 {/* Favicon URL */}

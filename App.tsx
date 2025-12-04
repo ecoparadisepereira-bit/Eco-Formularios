@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dashboard } from './components/Admin/Dashboard';
 import { FormBuilder } from './components/Admin/FormBuilder';
@@ -15,7 +16,8 @@ type ViewState = 'login' | 'dashboard' | 'builder' | 'responses' | 'client' | 's
 const DEFAULT_CONFIG: AppConfig = {
     appName: 'Ecoparadise',
     logoUrl: 'https://cdn-icons-png.flaticon.com/512/3755/3755331.png',
-    faviconUrl: 'https://cdn-icons-png.flaticon.com/512/3755/3755331.png'
+    faviconUrl: 'https://cdn-icons-png.flaticon.com/512/3755/3755331.png',
+    loginImageUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1964&auto=format&fit=crop' // Default Abstract 3D/Nature
 };
 
 function App() {
@@ -34,15 +36,21 @@ function App() {
   useEffect(() => {
     // Load Settings from Cloud
     const initConfig = async () => {
+        // First try local storage for instant load
+        const savedConfig = localStorage.getItem('app_global_config');
+        if (savedConfig) {
+            try { 
+                const parsed = JSON.parse(savedConfig);
+                // Ensure new fields exist if loading old config
+                setAppConfig({ ...DEFAULT_CONFIG, ...parsed }); 
+            } catch(e) {}
+        }
+
+        // Then try cloud for updates
         const cloudConfig = await storageService.fetchGlobalConfig();
         if (cloudConfig) {
-            setAppConfig(cloudConfig);
-        } else {
-             // Fallback to local if cloud fails or first run
-             const savedConfig = localStorage.getItem('app_global_config');
-             if (savedConfig) {
-                 try { setAppConfig(JSON.parse(savedConfig)); } catch(e) {}
-             }
+            setAppConfig(prev => ({ ...prev, ...cloudConfig }));
+            localStorage.setItem('app_global_config', JSON.stringify(cloudConfig));
         }
     };
     initConfig();
