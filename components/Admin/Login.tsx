@@ -26,14 +26,14 @@ export const Login: React.FC<LoginProps> = ({ onLogin, appConfig }) => {
   const sideImage = appConfig.loginImageUrl || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1964&auto=format&fit=crop";
 
   return (
-    <div className="min-h-screen flex bg-dark-900">
+    <div className="h-screen w-full flex bg-dark-900 overflow-hidden">
       
-      {/* LEFT SIDE: FORM */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-center items-center p-8 lg:p-16 relative z-10">
+      {/* LEFT SIDE: FORM (Scrollable if needed) */}
+      <div className="w-full lg:w-1/2 flex flex-col justify-center items-center p-8 lg:p-16 relative z-10 overflow-y-auto">
         
         <div className="w-full max-w-md">
             <div className="flex items-center gap-3 mb-10">
-               <div className="w-10 h-10 bg-white/5 rounded-lg flex items-center justify-center border border-white/10">
+               <div className="w-10 h-10 bg-white/5 rounded-lg flex items-center justify-center border border-white/10 flex-shrink-0">
                  <DynamicLogo src={appConfig.logoUrl} className="w-6 h-6" />
                </div>
                <span className="font-bold text-xl text-white tracking-tight">{appConfig.appName}</span>
@@ -93,13 +93,13 @@ export const Login: React.FC<LoginProps> = ({ onLogin, appConfig }) => {
         </div>
       </div>
 
-      {/* RIGHT SIDE: IMAGE */}
-      <div className="hidden lg:block lg:w-1/2 relative overflow-hidden bg-dark-800">
-         <div className="absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-dark-900 z-10"></div>
+      {/* RIGHT SIDE: IMAGE (Fixed Height) */}
+      <div className="hidden lg:block lg:w-1/2 relative h-full overflow-hidden bg-dark-800">
+         <div className="absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-dark-900 z-10 pointer-events-none"></div>
          <img 
             src={sideImage} 
             alt="Login Visual" 
-            className="w-full h-full object-cover opacity-90 hover:scale-105 transition-transform duration-[10s]"
+            className="w-full h-full object-cover opacity-90 hover:scale-105 transition-transform duration-[20s]"
          />
          
          {/* Floating Element Effect */}

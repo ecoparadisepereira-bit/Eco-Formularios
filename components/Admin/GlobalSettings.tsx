@@ -61,10 +61,10 @@ export const GlobalSettings: React.FC<GlobalSettingsProps> = ({ config, onSave }
                             type="url" 
                             value={formData.logoUrl}
                             onChange={(e) => handleChange('logoUrl', e.target.value)}
-                            className="flex-1 px-4 py-3 bg-dark-900 border border-dark-600 rounded-xl text-white outline-none focus:border-eco-500 focus:ring-1 focus:ring-eco-500 transition-all placeholder-dark-600"
+                            className="flex-1 min-w-0 px-4 py-3 bg-dark-900 border border-dark-600 rounded-xl text-white outline-none focus:border-eco-500 focus:ring-1 focus:ring-eco-500 transition-all placeholder-dark-600"
                             placeholder="https://..."
                         />
-                        <div className="w-12 h-12 bg-dark-900 border border-dark-600 rounded-xl flex items-center justify-center p-2">
+                        <div className="w-12 h-12 bg-dark-900 border border-dark-600 rounded-xl flex items-center justify-center p-2 flex-shrink-0">
                             <img src={formData.logoUrl} alt="Preview" className="w-full h-full object-contain" onError={(e) => e.currentTarget.style.display = 'none'} />
                         </div>
                     </div>
@@ -81,10 +81,10 @@ export const GlobalSettings: React.FC<GlobalSettingsProps> = ({ config, onSave }
                             type="url" 
                             value={formData.loginImageUrl || ''}
                             onChange={(e) => handleChange('loginImageUrl', e.target.value)}
-                            className="flex-1 px-4 py-3 bg-dark-900 border border-dark-600 rounded-xl text-white outline-none focus:border-eco-500 focus:ring-1 focus:ring-eco-500 transition-all placeholder-dark-600"
+                            className="flex-1 min-w-0 px-4 py-3 bg-dark-900 border border-dark-600 rounded-xl text-white outline-none focus:border-eco-500 focus:ring-1 focus:ring-eco-500 transition-all placeholder-dark-600"
                             placeholder="https://..."
                         />
-                        <div className="w-12 h-12 bg-dark-900 border border-dark-600 rounded-xl flex items-center justify-center overflow-hidden">
+                        <div className="w-12 h-12 bg-dark-900 border border-dark-600 rounded-xl flex items-center justify-center overflow-hidden flex-shrink-0">
                             {formData.loginImageUrl ? (
                                 <img src={formData.loginImageUrl} alt="Preview" className="w-full h-full object-cover" onError={(e) => e.currentTarget.style.display = 'none'} />
                             ) : (
@@ -106,10 +106,10 @@ export const GlobalSettings: React.FC<GlobalSettingsProps> = ({ config, onSave }
                             type="url" 
                             value={formData.faviconUrl}
                             onChange={(e) => handleChange('faviconUrl', e.target.value)}
-                            className="flex-1 px-4 py-3 bg-dark-900 border border-dark-600 rounded-xl text-white outline-none focus:border-eco-500 focus:ring-1 focus:ring-eco-500 transition-all placeholder-dark-600"
+                            className="flex-1 min-w-0 px-4 py-3 bg-dark-900 border border-dark-600 rounded-xl text-white outline-none focus:border-eco-500 focus:ring-1 focus:ring-eco-500 transition-all placeholder-dark-600"
                             placeholder="https://..."
                         />
-                         <div className="w-12 h-12 bg-dark-900 border border-dark-600 rounded-xl flex items-center justify-center p-3">
+                         <div className="w-12 h-12 bg-dark-900 border border-dark-600 rounded-xl flex items-center justify-center p-3 flex-shrink-0">
                             <img src={formData.faviconUrl} alt="Preview" className="w-full h-full object-contain" onError={(e) => e.currentTarget.style.display = 'none'} />
                         </div>
                     </div>
