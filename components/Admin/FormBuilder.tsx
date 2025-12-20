@@ -1,8 +1,7 @@
 
 import React, { useState, useRef } from 'react';
 import { FormSchema, FieldType, FormField } from '../../types';
-import { PlusIcon, TrashIcon, SparklesIcon, GripVerticalIcon, ArrowLeftIcon, CalendarIcon, ClockIcon, ListCheckIcon, UploadCloudIcon, ImageIcon, CheckIcon, TextIcon, HashIcon, ListIcon, TagIcon, DollarIcon, ClockIcon as NightIcon } from '../ui/Icons';
-import { generateFormSchema } from '../../services/geminiService';
+import { PlusIcon, TrashIcon, SparklesIcon, GripVerticalIcon, ArrowLeftIcon, CalendarIcon, ClockIcon, ListCheckIcon, UploadCloudIcon, ImageIcon, CheckIcon, TextIcon, HashIcon, ListIcon, TagIcon, DollarIcon, StarIcon, ClockIcon as NightIcon } from '../ui/Icons';
 
 interface FormBuilderProps {
   initialData?: FormSchema | null;
@@ -21,20 +20,10 @@ const defaultThankYou = {
 
 const DEFAULT_SHEET_URL = "https://script.google.com/macros/s/AKfycbyQscuJzzO-2lQQiTwuNTL0-LrCQ-82LcVa8npwaK7AuG7LJa4sCLqJKSmL5qDZG851/exec";
 
-const PRESET_IMAGES = [
-  { name: 'Hotel Luxury', url: 'https://images.unsplash.com/photo-1571896349842-6e53ce41e86c?q=80&w=2071&auto=format&fit=crop' },
-  { name: 'Naturaleza Eco', url: 'https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?q=80&w=2070&auto=format&fit=crop' },
-  { name: 'Oscuro Abstracto', url: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=2070&auto=format&fit=crop' },
-  { name: 'Minimal Verde', url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1964&auto=format&fit=crop' }
-];
-
 export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, onCancel }) => {
   const [activeTab, setActiveTab] = useState<'fields' | 'settings'>('fields');
-  const [loadingAi, setLoadingAi] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [aiPrompt, setAiPrompt] = useState('');
-  const [showAiModal, setShowAiModal] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
   const [title, setTitle] = useState(initialData?.title || 'Nuevo Formulario');
   const [description, setDescription] = useState(initialData?.description || '');
@@ -44,31 +33,18 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
   const [backgroundImageUrl, setBackgroundImageUrl] = useState(initialData?.backgroundImageUrl || '');
   const [customId, setCustomId] = useState(initialData?.id || generateId());
 
-  const handleAiGenerate = async () => {
-    if (!aiPrompt.trim()) return;
-    setLoadingAi(true);
-    try {
-      const schema = await generateFormSchema(aiPrompt);
-      if (schema.title) setTitle(schema.title);
-      if (schema.description) setDescription(schema.description);
-      if (schema.fields) setFields(schema.fields as FormField[]);
-      if (schema.thankYouScreen) setThankYou(schema.thankYouScreen);
-      setShowAiModal(false);
-    } catch (err: any) {
-      alert(err.message || "Error generando el formulario.");
-    } finally {
-      setLoadingAi(false);
-    }
-  };
-
   const handleAddField = (type: FieldType) => {
     const newField: FormField = {
       id: generateId(),
       type,
-      label: type === FieldType.PAYMENT ? 'Abono / Pago Parcial' : 'Nuevo Campo',
+      label: type === FieldType.PAYMENT ? 'Abono / Pago Parcial' : 
+             type === FieldType.DATE ? 'Fecha de Entrada' : 
+             type === FieldType.ADDITIONAL_PERSON ? '¿Incluye Huésped Adicional?' : 
+             type === FieldType.STAR_RATING ? 'Calificación del Servicio' : 'Nuevo Campo',
       required: false,
-      options: (type === FieldType.SINGLE_SELECT || type === FieldType.CHECKBOX) ? ['Opción 1', 'Opción 2'] : undefined,
       productOptions: type === FieldType.PRODUCT ? [{ label: 'Habitación Estándar', price: 0, isPerNight: true }] : undefined,
+      additionalPrice: type === FieldType.ADDITIONAL_PERSON ? 0 : undefined,
+      isPerNight: type === FieldType.ADDITIONAL_PERSON ? true : undefined,
     };
     setFields([...fields, newField]);
   };
@@ -81,19 +57,34 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
     setFields(fields.filter(f => f.id !== id));
   };
 
-  const moveField = (index: number, direction: 'up' | 'down') => {
+  // --- Lógica de Drag and Drop ---
+  const onDragStart = (index: number) => {
+    setDraggedIndex(index);
+  };
+
+  const onDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === index) return;
+    
     const newFields = [...fields];
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    if (targetIndex >= 0 && targetIndex < newFields.length) {
-      [newFields[index], newFields[targetIndex]] = [newFields[targetIndex], newFields[index]];
-      setFields(newFields);
-    }
+    const draggedItem = newFields[draggedIndex];
+    
+    // Intercambiar posición
+    newFields.splice(draggedIndex, 1);
+    newFields.splice(index, 0, draggedItem);
+    
+    setDraggedIndex(index);
+    setFields(newFields);
+  };
+
+  const onDragEnd = () => {
+    setDraggedIndex(null);
   };
 
   const addProductOption = (fieldId: string) => {
       setFields(fields.map(f => {
           if (f.id === fieldId && f.productOptions) {
-              return { ...f, productOptions: [...f.productOptions, { label: 'Nuevo Item', price: 0, isPerNight: false }] };
+              return { ...f, productOptions: [...f.productOptions, { label: 'Nuevo Item', price: 0, isPerNight: true }] };
           }
           return f;
       }));
@@ -120,33 +111,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
       }));
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-        if (file.size > 2 * 1024 * 1024) {
-            alert("La imagen es demasiado pesada.");
-            return;
-        }
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            const img = new Image();
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                const MAX_WIDTH = 800;
-                const scaleSize = MAX_WIDTH / img.width;
-                canvas.width = MAX_WIDTH;
-                canvas.height = img.height * scaleSize;
-                const ctx = canvas.getContext('2d');
-                ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-                const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
-                setBackgroundImageUrl(dataUrl);
-            };
-            img.src = event.target?.result as string;
-        };
-        reader.readAsDataURL(file);
-    }
-  };
-
   const handleSave = async () => {
     if (!title.trim()) return alert("El título es obligatorio");
     setIsSaving(true);
@@ -169,7 +133,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
 
   return (
     <div className="bg-dark-900 min-h-screen text-white">
-      <div className="sticky top-0 z-20 bg-dark-900/90 backdrop-blur border-b border-dark-800 px-8 py-4 flex justify-between items-center">
+      <div className="sticky top-0 z-30 bg-dark-900/90 backdrop-blur border-b border-dark-800 px-8 py-4 flex justify-between items-center">
         <div className="flex items-center gap-4">
           <button onClick={onCancel} className="p-2 hover:bg-dark-800 rounded-full text-dark-muted hover:text-white transition-colors">
             <ArrowLeftIcon />
@@ -177,12 +141,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
           <h2 className="text-xl font-bold">{initialData ? 'Editar Formulario' : 'Crear Formulario'}</h2>
         </div>
         <div className="flex gap-3">
-           {!initialData && (
-            <button onClick={() => setShowAiModal(true)} className="flex items-center gap-2 px-4 py-2 text-eco-400 bg-eco-500/10 hover:bg-eco-500/20 rounded-lg font-medium transition-colors border border-eco-500/20">
-              <SparklesIcon className="w-4 h-4" />
-              <span>Generar con IA</span>
-            </button>
-           )}
           <button onClick={handleSave} disabled={isSaving} className="px-6 py-2 bg-eco-500 text-dark-900 rounded-lg hover:bg-eco-400 font-bold disabled:opacity-70 disabled:cursor-wait flex items-center gap-2 shadow-glow">
             {isSaving ? 'Guardando...' : 'Guardar Cambios'}
           </button>
@@ -203,14 +161,15 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
                 <button onClick={() => handleAddField(FieldType.SHORT_TEXT)} className="field-btn"><TextIcon className="w-4 h-4 opacity-70" /> Texto Corto</button>
                 <button onClick={() => handleAddField(FieldType.NUMBER)} className="field-btn"><HashIcon className="w-4 h-4 opacity-70" /> Número</button>
                 <button onClick={() => handleAddField(FieldType.DATE)} className="field-btn"><CalendarIcon className="w-4 h-4 opacity-70" /> Fecha</button>
+                <button onClick={() => handleAddField(FieldType.STAR_RATING)} className="field-btn"><StarIcon className="w-4 h-4 opacity-70" /> Calificación</button>
                 
                 <p className="text-xs text-dark-muted font-bold uppercase mb-2 mt-4 tracking-wider ml-1">Comercial</p>
                 <button onClick={() => handleAddField(FieldType.PRODUCT)} className="field-btn bg-eco-500/5 hover:bg-eco-500/10 border-eco-500/20"><TagIcon className="w-4 h-4 text-eco-400" /> Productos / Reservas</button>
+                <button onClick={() => handleAddField(FieldType.ADDITIONAL_PERSON)} className="field-btn bg-eco-500/5 hover:bg-eco-500/10 border-eco-500/20"><PlusIcon className="w-4 h-4 text-eco-400" /> Huésped Adicional</button>
                 <button onClick={() => handleAddField(FieldType.PAYMENT)} className="field-btn bg-eco-500/5 hover:bg-eco-500/10 border-eco-500/20"><DollarIcon className="w-4 h-4 text-eco-400" /> Abono / Pago</button>
                 
                 <p className="text-xs text-dark-muted font-bold uppercase mb-2 mt-4 tracking-wider ml-1">Otros</p>
                 <button onClick={() => handleAddField(FieldType.LONG_TEXT)} className="field-btn"><TextIcon className="w-4 h-4 opacity-70" /> Texto Largo</button>
-                <button onClick={() => handleAddField(FieldType.SINGLE_SELECT)} className="field-btn"><ListIcon className="w-4 h-4 opacity-70" /> Selección Única</button>
                 <button onClick={() => handleAddField(FieldType.IMAGE_UPLOAD)} className="field-btn"><ImageIcon className="w-4 h-4 opacity-70" /> Subir Imagen</button>
               </div>
             ) : (
@@ -226,16 +185,12 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
                     <h3 className="text-[10px] font-bold text-eco-400 uppercase tracking-widest mb-3 border-b border-dark-700 pb-2">Integraciones</h3>
                     <input type="url" value={googleSheetUrl} onChange={(e) => setGoogleSheetUrl(e.target.value)} className={inputClass} placeholder="Google Sheet Webhook..." />
                 </section>
-                <section>
-                    <h3 className="text-[10px] font-bold text-eco-400 uppercase tracking-widest mb-3 border-b border-dark-700 pb-2">Pantalla Final</h3>
-                    <textarea value={thankYou.message} onChange={(e) => setThankYou({...thankYou, message: e.target.value})} rows={4} className={inputClass} />
-                </section>
               </div>
             )}
           </div>
         </div>
 
-        <div className="lg:col-span-8 space-y-6">
+        <div className="lg:col-span-8 space-y-6 pb-20">
           <div className="bg-dark-800 border border-dark-700 rounded-2xl p-8 shadow-card">
              <input type="text" placeholder="Título del Formulario" value={title} onChange={(e) => setTitle(e.target.value)} className="text-3xl font-bold text-white w-full bg-transparent outline-none mb-2" />
              <input type="text" placeholder="Descripción..." value={description} onChange={(e) => setDescription(e.target.value)} className="text-dark-muted w-full bg-transparent outline-none" />
@@ -243,13 +198,28 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
 
           <div className="space-y-4">
             {fields.map((field, index) => (
-              <div key={field.id} className="group bg-dark-800 border border-dark-700 rounded-2xl p-6 relative">
-                <div className="absolute right-4 top-4 opacity-0 group-hover:opacity-100 flex gap-2">
-                  <button onClick={() => removeField(field.id)} className="p-1.5 text-red-400 hover:text-red-300"><TrashIcon className="w-4 h-4" /></button>
+              <div 
+                key={field.id} 
+                draggable
+                onDragStart={() => onDragStart(index)}
+                onDragOver={(e) => onDragOver(e, index)}
+                onDragEnd={onDragEnd}
+                className={`group bg-dark-800 border transition-all duration-200 rounded-2xl p-6 relative cursor-default ${draggedIndex === index ? 'opacity-40 border-eco-500 scale-95 ring-2 ring-eco-500/20' : 'border-dark-700 hover:border-dark-600 hover:scale-[1.01]'}`}
+              >
+                {/* Drag Handle */}
+                <div className="absolute left-2 top-1/2 -translate-y-1/2 text-dark-600 group-hover:text-dark-muted cursor-grab active:cursor-grabbing p-1">
+                    <GripVerticalIcon className="w-5 h-5" />
                 </div>
 
-                <div className="space-y-4">
-                    <input value={field.label} onChange={(e) => updateField(field.id, { label: e.target.value })} className="w-full text-lg font-medium text-white bg-transparent border-b border-transparent hover:border-dark-600 focus:border-eco-500 outline-none pb-1" />
+                <div className="absolute right-4 top-4 opacity-0 group-hover:opacity-100 flex gap-2">
+                  <button onClick={() => removeField(field.id)} className="p-1.5 text-red-400 hover:text-red-300 transition-colors"><TrashIcon className="w-4 h-4" /></button>
+                </div>
+
+                <div className="pl-6 space-y-4">
+                    <div className="flex items-center gap-2">
+                        <input value={field.label} onChange={(e) => updateField(field.id, { label: e.target.value })} className="flex-1 text-lg font-medium text-white bg-transparent border-b border-transparent hover:border-dark-600 focus:border-eco-500 outline-none pb-1 transition-all" />
+                        <span className="text-[10px] font-bold text-dark-muted uppercase bg-dark-900 px-2 py-1 rounded border border-dark-700">{field.type.replace('_', ' ')}</span>
+                    </div>
                     
                     {field.type === FieldType.PRODUCT && (
                         <div className="w-full bg-dark-900/50 p-4 rounded-xl border border-dark-700">
@@ -259,23 +229,46 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
                              </div>
                              <div className="space-y-3">
                                  {field.productOptions?.map((opt, idx) => (
-                                     <div key={idx} className="flex gap-3 items-center">
+                                     <div key={idx} className="flex gap-3 items-center animate-in slide-in-from-left-2 duration-200">
                                          <input type="text" value={opt.label} onChange={(e) => updateProductOption(field.id, idx, 'label', e.target.value)} placeholder="Ej: Suite King" className="flex-1 !bg-[#050505] border border-dark-600 rounded px-3 py-1.5 text-white text-sm" />
                                          <input type="number" value={opt.price} onChange={(e) => updateProductOption(field.id, idx, 'price', parseFloat(e.target.value) || 0)} placeholder="0.00" className="w-24 !bg-[#050505] border border-dark-600 rounded px-3 py-1.5 text-white text-sm" />
                                          
                                          <button 
                                             onClick={() => updateProductOption(field.id, idx, 'isPerNight', !opt.isPerNight)}
                                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all border ${opt.isPerNight ? 'bg-eco-500/10 border-eco-500 text-eco-400' : 'bg-dark-900 border-dark-600 text-dark-muted'}`}
-                                            title="Si está activo, multiplicará el precio por el número de noches"
                                          >
                                             <NightIcon className="w-3 h-3" />
                                             X NOCHE
                                          </button>
-
                                          <button onClick={() => removeProductOption(field.id, idx)} className="p-1.5 text-dark-600 hover:text-red-400"><TrashIcon className="w-4 h-4" /></button>
                                      </div>
                                  ))}
                              </div>
+                        </div>
+                    )}
+
+                    {field.type === FieldType.ADDITIONAL_PERSON && (
+                        <div className="flex gap-4 items-end bg-dark-900/50 p-4 rounded-xl border border-dark-700">
+                             <div className="flex-1">
+                                <label className="text-[10px] font-bold text-dark-muted uppercase tracking-wider mb-1 block">Precio por Adicional</label>
+                                <input type="number" value={field.additionalPrice} onChange={(e) => updateField(field.id, { additionalPrice: parseFloat(e.target.value) || 0 })} className="w-full !bg-[#050505] border border-dark-600 rounded px-3 py-2 text-white text-sm" />
+                             </div>
+                             <button 
+                                onClick={() => updateField(field.id, { isPerNight: !field.isPerNight })}
+                                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-[10px] font-bold transition-all border h-[38px] ${field.isPerNight ? 'bg-eco-500/10 border-eco-500 text-eco-400' : 'bg-dark-900 border-dark-600 text-dark-muted'}`}
+                             >
+                                <NightIcon className="w-3 h-3" />
+                                X NOCHE
+                             </button>
+                        </div>
+                    )}
+
+                    {field.type === FieldType.STAR_RATING && (
+                        <div className="flex items-center gap-3 bg-dark-900/40 p-4 rounded-xl border border-dashed border-dark-700">
+                             <div className="flex gap-1 text-eco-500/30">
+                                {[1,2,3,4,5].map(i => <StarIcon key={i} filled className="w-6 h-6" />)}
+                             </div>
+                             <p className="text-xs text-dark-muted italic">Previsualización del campo de calificación (1-5 estrellas)</p>
                         </div>
                     )}
                 </div>
@@ -289,7 +282,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
         .field-btn {
             display: flex; align-items: center; gap: 0.75rem; width: 100%; text-align: left; padding: 0.75rem 1rem; background: rgba(31, 41, 55, 0.5); border: 1px solid #1f2937; border-radius: 0.75rem; font-size: 0.875rem; color: #94a3b8; transition: all 0.2s;
         }
-        .field-btn:hover { background: #1f2937; color: white; border-color: rgba(74, 222, 128, 0.3); }
+        .field-btn:hover { background: #1f2937; color: white; border-color: rgba(74, 222, 128, 0.3); transform: translateX(4px); }
       `}</style>
     </div>
   );

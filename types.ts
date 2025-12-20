@@ -10,7 +10,9 @@ export enum FieldType {
   TIME = 'time',         
   IMAGE_UPLOAD = 'image_upload',
   PRODUCT = 'product',   
-  PAYMENT = 'payment',   
+  PAYMENT = 'payment',
+  ADDITIONAL_PERSON = 'additional_person', 
+  STAR_RATING = 'star_rating', // NEW: Star rating field
 }
 
 // Validation Rules
@@ -24,7 +26,7 @@ export interface ValidationRules {
 export interface ProductOption {
   label: string;
   price: number;
-  isPerNight?: boolean; // NEW: Toggle for per-night billing
+  isPerNight?: boolean;
 }
 
 // Field Definition
@@ -37,6 +39,9 @@ export interface FormField {
   options?: string[]; 
   productOptions?: ProductOption[]; 
   validation?: ValidationRules;
+  // Configuration for Additional Person
+  additionalPrice?: number;
+  isPerNight?: boolean;
 }
 
 // Thank You Screen Configuration
@@ -65,7 +70,7 @@ export interface FormResponse {
   id: string;
   formId: string;
   submittedAt: number;
-  answers: Record<string, string | number | string[] | null>; 
+  answers: Record<string, any>; 
 }
 
 // Global App Configuration

@@ -1,7 +1,8 @@
+
 import React, { useEffect, useState } from 'react';
 import { FormSchema, FormResponse, FieldType } from '../../types';
 import { storageService } from '../../services/storageService';
-import { ArrowLeftIcon, DownloadIcon, SearchIcon, RefreshIcon, EyeIcon, CheckIcon } from '../ui/Icons';
+import { ArrowLeftIcon, DownloadIcon, SearchIcon, RefreshIcon, EyeIcon, CheckIcon, StarIcon } from '../ui/Icons';
 
 interface ResponseViewerProps {
   form: FormSchema;
@@ -17,7 +18,6 @@ export const ResponseViewer: React.FC<ResponseViewerProps> = ({ form, onBack }) 
   
   const [viewingReceipt, setViewingReceipt] = useState<FormResponse | null>(null);
 
-  // Check if form has financials (Exact type or smart keyword)
   const hasFinancials = form.fields.some(f => 
     f.type === FieldType.PRODUCT || 
     f.type === FieldType.PAYMENT ||
@@ -48,19 +48,38 @@ export const ResponseViewer: React.FC<ResponseViewerProps> = ({ form, onBack }) 
     return String(val);
   };
 
-  // Recalculate totals on the fly if missing from DB (Backward compatibility)
+  const getNightsFromResponse = (response: FormResponse) => {
+    const dateFields = form.fields.filter(f => f.type === FieldType.DATE);
+    const checkinField = dateFields.find(f => /entrada|llegada|check-in|checkin|desde/i.test(f.label));
+    const checkoutField = dateFields.find(f => /salida|ida|check-out|checkout|hasta/i.test(f.label));
+
+    if (checkinField && checkoutField) {
+        const startVal = getFuzzyValue(response.answers, checkinField.label);
+        const endVal = getFuzzyValue(response.answers, checkoutField.label);
+        if (startVal && endVal) {
+            const start = new Date(startVal);
+            const end = new Date(endVal);
+            if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+                const diffTime = end.getTime() - start.getTime();
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                return diffDays > 0 ? diffDays : 0;
+            }
+        }
+    }
+    return 0;
+  };
+
   const getDerivedFinancials = (response: FormResponse) => {
-      // Try to get stored values first
       let total = parseFloat(response.answers['Total Calculado'] as string);
       let paid = parseFloat(response.answers['Total Abono'] as string);
+      let nights = parseFloat(response.answers['Noches Estancia'] as string);
       
-      // If not stored (NaN), recalculate based on schema + answers
       if (isNaN(total) || isNaN(paid)) {
           total = 0;
           paid = 0;
+          if (isNaN(nights)) nights = getNightsFromResponse(response);
           
           form.fields.forEach(field => {
-               // Products
                if (field.type === FieldType.PRODUCT && field.productOptions) {
                   const val = getFuzzyValue(response.answers, field.label);
                   let selected: string[] = [];
@@ -69,11 +88,13 @@ export const ResponseViewer: React.FC<ResponseViewerProps> = ({ form, onBack }) 
 
                   selected.forEach(lbl => {
                       const opt = field.productOptions?.find(o => o.label === lbl);
-                      if (opt) total += opt.price;
+                      if (opt) {
+                          const multiplier = opt.isPerNight ? (nights || 1) : 1;
+                          total += (opt.price * multiplier);
+                      }
                   });
                }
 
-               // Payments (Smart Detect)
                const isExplicitPayment = field.type === FieldType.PAYMENT;
                const isImplicitPayment = field.type === FieldType.NUMBER && /abono|pago|anticipo|seña|adelanto/i.test(field.label);
                
@@ -85,11 +106,10 @@ export const ResponseViewer: React.FC<ResponseViewerProps> = ({ form, onBack }) 
           });
       }
       
-      // Safety check if total was explicitly 0 in DB
       if (response.answers['Total Calculado'] === 0) total = 0;
       if (response.answers['Total Abono'] === 0) paid = 0;
 
-      return { total, paid, remaining: total - paid };
+      return { total, paid, remaining: total - paid, nights };
   };
 
   const loadData = async () => {
@@ -132,7 +152,7 @@ export const ResponseViewer: React.FC<ResponseViewerProps> = ({ form, onBack }) 
   const downloadCSV = () => {
     const headers = showAllRaw 
         ? ['Fecha', ...Object.keys(allRawResponses[0]?.answers || {}).filter(k => k !== 'Fecha' && k !== 'formId')]
-        : ['Fecha Envío', ...form.fields.map(f => f.label.replace(/,/g, '')), ...(hasFinancials ? ['Total', 'Abono', 'Pendiente'] : [])]; 
+        : ['Fecha Envío', ...form.fields.map(f => f.label.replace(/,/g, '')), ...(hasFinancials ? ['Noches', 'Total', 'Abono', 'Pendiente'] : [])]; 
     const rows = filteredResponses.map(r => {
       const date = new Date(r.submittedAt).toLocaleString();
       let answerCells: string[] = [];
@@ -142,7 +162,8 @@ export const ResponseViewer: React.FC<ResponseViewerProps> = ({ form, onBack }) 
       } else {
          answerCells = form.fields.map(f => `"${renderSafeValue(getFuzzyValue(r.answers, f.label)).replace(/"/g, '""')}"`);
          if (hasFinancials) {
-             const { total, paid, remaining } = getDerivedFinancials(r);
+             const { total, paid, remaining, nights } = getDerivedFinancials(r);
+             answerCells.push(`"${nights}"`);
              answerCells.push(`"${formatMoney(total)}"`);
              answerCells.push(`"${formatMoney(paid)}"`);
              answerCells.push(`"${formatMoney(remaining)}"`);
@@ -170,16 +191,15 @@ export const ResponseViewer: React.FC<ResponseViewerProps> = ({ form, onBack }) 
         message = message.replace(regex, `<span class="font-bold text-dark-900">${displayValue}</span>`);
     });
     
-    // Interpolate financials using safe derived values
-    const { total, paid, remaining } = getDerivedFinancials(viewingReceipt);
+    const { total, paid, remaining, nights } = getDerivedFinancials(viewingReceipt);
 
     message = message.replace(/@total/gi, `<span class="font-bold text-dark-900">${formatMoney(total)}</span>`);
     message = message.replace(/@abono/gi, `<span class="font-bold text-dark-900">${formatMoney(paid)}</span>`);
     message = message.replace(/@pendiente/gi, `<span class="font-bold text-dark-900">${formatMoney(remaining)}</span>`);
+    message = message.replace(/@noches/gi, `<span class="font-bold text-dark-900">${nights}</span>`);
 
     return message.replace(/\n/g, '<br/>');
   };
-
 
   return (
     <div className="animate-in fade-in duration-500">
@@ -196,7 +216,6 @@ export const ResponseViewer: React.FC<ResponseViewerProps> = ({ form, onBack }) 
                 </div>
                 
                 <div className="flex gap-3">
-                     {/* Raw Switch */}
                      <div className="flex items-center gap-3 bg-dark-800 px-3 py-1.5 rounded-lg border border-dark-700">
                         <span className="text-xs font-bold text-dark-muted uppercase">Modo Crudo</span>
                         <button 
@@ -253,6 +272,7 @@ export const ResponseViewer: React.FC<ResponseViewerProps> = ({ form, onBack }) 
                             ))}
                             {hasFinancials && (
                                 <>
+                                    <th className="px-6 py-4 text-xs font-bold text-dark-muted uppercase tracking-wider min-w-[60px]">Noches</th>
                                     <th className="px-6 py-4 text-xs font-bold text-eco-400 uppercase tracking-wider min-w-[100px]">Total</th>
                                     <th className="px-6 py-4 text-xs font-bold text-eco-400 uppercase tracking-wider min-w-[100px]">Abono</th>
                                     <th className="px-6 py-4 text-xs font-bold text-red-400 uppercase tracking-wider min-w-[100px]">Pendiente</th>
@@ -296,6 +316,11 @@ export const ResponseViewer: React.FC<ResponseViewerProps> = ({ form, onBack }) 
                                     <td key={field.id} className="px-6 py-4 text-sm text-gray-300">
                                     {field.type === FieldType.IMAGE_UPLOAD && val ? (
                                         <a href={val as string} target="_blank" className="text-eco-400 hover:underline text-xs">Ver Imagen</a>
+                                    ) : field.type === FieldType.STAR_RATING ? (
+                                        <div className="flex gap-0.5 items-center text-eco-400">
+                                            <span className="font-bold mr-1">{val}</span>
+                                            <StarIcon filled className="w-3.5 h-3.5" />
+                                        </div>
                                     ) : (
                                         <span className="line-clamp-1">{renderSafeValue(val)}</span>
                                     )}
@@ -303,6 +328,7 @@ export const ResponseViewer: React.FC<ResponseViewerProps> = ({ form, onBack }) 
                                 )})}
                                 {hasFinancials && financials && (
                                     <>
+                                        <td className="px-6 py-4 text-sm text-dark-muted">{financials.nights}</td>
                                         <td className="px-6 py-4 text-sm font-bold text-eco-400">{formatMoney(financials.total)}</td>
                                         <td className="px-6 py-4 text-sm font-bold text-white">{formatMoney(financials.paid)}</td>
                                         <td className="px-6 py-4 text-sm font-bold text-red-400">{formatMoney(financials.remaining)}</td>
