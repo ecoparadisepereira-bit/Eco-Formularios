@@ -49,13 +49,14 @@ const StarRating = ({ value, onChange }: { value: number, onChange: (val: number
     );
 };
 
-// --- COMPONENTE CALENDARIO CON SELECTOR DE AÑO ---
+// --- COMPONENTE CALENDARIO CON SELECTOR DE AÑO MEJORADO ---
 const CustomDatePicker = ({ value, onChange, placeholder }: { value: string, onChange: (val: string) => void, placeholder: string }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [currentDate, setCurrentDate] = useState(value ? new Date(value + 'T12:00:00') : new Date());
     const [showYearSelector, setShowYearSelector] = useState(false);
     const [dropUp, setDropUp] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
+    const yearListRef = useRef<HTMLDivElement>(null);
 
     const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
     const dayNames = ["DO", "LU", "MA", "MI", "JU", "VI", "SA"];
@@ -77,6 +78,16 @@ const CustomDatePicker = ({ value, onChange, placeholder }: { value: string, onC
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [isOpen]);
+
+    // Auto-scroll al año seleccionado cuando se abre el selector
+    useEffect(() => {
+        if (showYearSelector && yearListRef.current) {
+            const selectedYearBtn = yearListRef.current.querySelector('[data-selected="true"]');
+            if (selectedYearBtn) {
+                selectedYearBtn.scrollIntoView({ block: 'center', behavior: 'instant' as any });
+            }
+        }
+    }, [showYearSelector]);
 
     const daysInMonth = (month: number, year: number) => new Date(year, month + 1, 0).getDate();
     const firstDayOfMonth = (month: number, year: number) => new Date(year, month, 1).getDay();
@@ -128,9 +139,9 @@ const CustomDatePicker = ({ value, onChange, placeholder }: { value: string, onC
     };
 
     const years = useMemo(() => {
-        const currentYear = new Date().getFullYear();
         const list = [];
-        for (let y = currentYear - 5; y <= currentYear + 10; y++) {
+        // Rango ampliado para cubrir nacimientos o reservas lejanas
+        for (let y = 1940; y <= 2100; y++) {
             list.push(y);
         }
         return list;
@@ -159,11 +170,13 @@ const CustomDatePicker = ({ value, onChange, placeholder }: { value: string, onC
                     ${dropUp ? 'bottom-full mb-2' : 'top-full mt-2'}`}
                 >
                     <div className="flex justify-between items-center mb-5 px-1">
-                        <button type="button" onClick={() => changeMonth(-1)} className="p-2 hover:bg-dark-800 rounded-xl text-dark-muted hover:text-white transition-all">
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
-                        </button>
+                        {!showYearSelector && (
+                            <button type="button" onClick={() => changeMonth(-1)} className="p-2 hover:bg-dark-800 rounded-xl text-dark-muted hover:text-white transition-all">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
+                            </button>
+                        )}
                         
-                        <div className="flex flex-col items-center">
+                        <div className={`flex flex-col items-center ${showYearSelector ? 'w-full' : ''}`}>
                             <span className="font-black text-[10px] text-eco-400 uppercase tracking-widest mb-1">{monthNames[currentDate.getMonth()]}</span>
                             <button 
                                 type="button" 
@@ -175,17 +188,23 @@ const CustomDatePicker = ({ value, onChange, placeholder }: { value: string, onC
                             </button>
                         </div>
 
-                        <button type="button" onClick={() => changeMonth(1)} className="p-2 hover:bg-dark-800 rounded-xl text-dark-muted hover:text-white transition-all">
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
-                        </button>
+                        {!showYearSelector && (
+                            <button type="button" onClick={() => changeMonth(1)} className="p-2 hover:bg-dark-800 rounded-xl text-dark-muted hover:text-white transition-all">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
+                            </button>
+                        )}
                     </div>
 
                     {showYearSelector ? (
-                        <div className="grid grid-cols-4 gap-2 h-48 overflow-y-auto pr-2 custom-scrollbar">
+                        <div 
+                            ref={yearListRef}
+                            className="grid grid-cols-4 gap-2 h-56 overflow-y-auto pr-2 custom-scrollbar scroll-smooth"
+                        >
                             {years.map(y => (
                                 <button 
                                     key={y} 
                                     onClick={() => changeYear(y)}
+                                    data-selected={currentDate.getFullYear() === y}
                                     className={`py-2 rounded-lg text-sm font-bold transition-all ${currentDate.getFullYear() === y ? 'bg-eco-500 text-dark-900' : 'text-dark-muted hover:bg-dark-800 hover:text-white'}`}
                                 >
                                     {y}
@@ -308,7 +327,7 @@ export const FormRenderer: React.FC<FormRendererProps> = ({ form, onBack }) => {
   const interpolateMessage = (message: string, answers: Record<string, any>, financials: any, fields: FormField[]) => {
       let result = message;
       
-      // Interpolate financials
+      // Interpolate financials con negrita manual
       result = result.replace(/@total/gi, `${formatMoney(financials.total)}`);
       result = result.replace(/@abono/gi, `${formatMoney(financials.paid)}`);
       result = result.replace(/@pendiente/gi, `${formatMoney(financials.remaining)}`);
@@ -332,7 +351,7 @@ export const FormRenderer: React.FC<FormRendererProps> = ({ form, onBack }) => {
           result = result.replace(regex, `${displayVal}`);
       });
 
-      // Específicos comunes (para evitar errores si no están exactos)
+      // Búsquedas secundarias por términos clave si las etiquetas no coinciden exactas
       result = result.replace(/@Nombre Completo/gi, `${answers[fields.find(f => /nombre/i.test(f.label))?.id || ''] || ''}`);
       result = result.replace(/@Número de teléfono/gi, `${answers[fields.find(f => /teléfono|whatsapp/i.test(f.label))?.id || ''] || ''}`);
       result = result.replace(/@Fecha de su reserva/gi, `${answers[fields.find(f => /fecha|entrada/i.test(f.label))?.id || ''] || ''}`);
@@ -385,89 +404,92 @@ export const FormRenderer: React.FC<FormRendererProps> = ({ form, onBack }) => {
     
     return (
       <div className="min-h-screen bg-dark-950 text-dark-900 flex flex-col items-center justify-center p-4">
-        {/* Voucher Digital (Estilo Recibo Blanco) */}
-        <div className="bg-white rounded-[32px] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.4)] max-w-lg w-full overflow-hidden animate-in zoom-in-95 duration-500 flex flex-col">
+        {/* Voucher Digital Estilo Blanco Profesional */}
+        <div className="bg-white rounded-[40px] shadow-[0_30px_80px_-20px_rgba(0,0,0,0.45)] max-w-lg w-full overflow-hidden animate-in zoom-in-95 duration-500 flex flex-col relative">
           
-          {/* Top Branding Section */}
-          <div className="bg-white px-8 pt-10 pb-6 text-center border-b border-gray-100 relative">
-             <div className="absolute top-4 left-1/2 -translate-x-1/2">
-                <div className="w-10 h-1 bg-eco-500 rounded-full"></div>
+          <div className="bg-white px-10 pt-12 pb-6 text-center relative border-b border-gray-100">
+             <div className="absolute top-5 left-1/2 -translate-x-1/2">
+                <div className="w-12 h-1.5 bg-eco-500 rounded-full"></div>
              </div>
-             <div className="w-14 h-14 bg-eco-50 flex items-center justify-center rounded-2xl mx-auto mb-4">
-                <CheckIcon className="w-8 h-8 text-eco-500" />
+             <div className="w-16 h-16 bg-eco-50 flex items-center justify-center rounded-[24px] mx-auto mb-5 shadow-inner">
+                <CheckIcon className="w-9 h-9 text-eco-500" />
              </div>
-             <h2 className="text-2xl font-black tracking-tight uppercase mb-1">¡Reserva Confirmada!</h2>
-             <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">{formattedDate}</p>
+             <h2 className="text-3xl font-black tracking-tighter uppercase mb-1">¡Reserva Exitosa!</h2>
+             <p className="text-gray-400 text-[10px] font-black uppercase tracking-[0.3em]">{formattedDate}</p>
           </div>
 
-          {/* Main Info Section (Interpolated Message) */}
-          <div className="px-10 py-8 text-gray-600 leading-relaxed text-[15px] space-y-4">
+          <div className="px-10 py-10 text-gray-700 leading-relaxed text-[15px] space-y-4 font-medium">
               <p className="whitespace-pre-wrap">
                   {interpolateMessage(form.thankYouScreen.message, answers, financials, form.fields)}
               </p>
           </div>
 
-          {/* Details Grid (Ticket Look) */}
-          <div className="bg-gray-50/80 mx-8 mb-8 p-6 rounded-3xl border border-gray-100">
-              <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-200/50">
-                  <span className="text-[10px] font-black text-eco-600 uppercase tracking-widest">Resumen de Reserva</span>
-                  {nights > 0 && <span className="bg-eco-500 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-tighter">{nights} Noches</span>}
+          <div className="bg-gray-50 mx-8 mb-8 p-8 rounded-[32px] border border-gray-100/50 shadow-sm">
+              <div className="flex justify-between items-center mb-8 pb-4 border-b border-gray-200/50">
+                  <span className="text-[11px] font-black text-eco-600 uppercase tracking-widest">Ticket Detallado</span>
+                  {nights > 0 && <span className="bg-eco-500 text-white text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-tighter shadow-sm">{nights} Noches</span>}
               </div>
 
-              <div className="space-y-6">
-                  {/* Habitaciones */}
+              <div className="space-y-7">
+                  {/* Unidad Reservada */}
                   {form.fields.filter(f => f.type === FieldType.PRODUCT && answers[f.id]?.length > 0).map(field => (
-                      <div key={field.id} className="flex gap-4">
-                          <div className="w-8 h-8 rounded-lg bg-white border border-gray-100 flex items-center justify-center text-eco-500 flex-shrink-0">
-                             <TagIcon className="w-4 h-4" />
+                      <div key={field.id} className="flex gap-5">
+                          <div className="w-10 h-10 rounded-2xl bg-white border border-gray-200 flex items-center justify-center text-eco-500 flex-shrink-0 shadow-sm">
+                             <TagIcon className="w-5 h-5" />
                           </div>
                           <div className="flex-1">
-                              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Unidad / Suite</p>
-                              <p className="text-sm font-bold text-gray-800">{(answers[field.id] as string[]).join(', ')}</p>
+                              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Alojamiento</p>
+                              <p className="text-sm font-bold text-gray-800 leading-tight">{(answers[field.id] as string[]).join(', ')}</p>
                           </div>
                       </div>
                   ))}
 
-                  {/* Huéspedes */}
+                  {/* Invitados */}
                   {form.fields.filter(f => f.type === FieldType.ADDITIONAL_PERSON && (answers[f.id] as GuestData[])?.length > 0).map(field => (
-                      <div key={field.id} className="flex gap-4">
-                          <div className="w-8 h-8 rounded-lg bg-white border border-gray-100 flex items-center justify-center text-amber-500 flex-shrink-0">
-                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                      <div key={field.id} className="flex gap-5">
+                          <div className="w-10 h-10 rounded-2xl bg-white border border-gray-200 flex items-center justify-center text-amber-500 flex-shrink-0 shadow-sm">
+                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
                           </div>
                           <div className="flex-1">
-                              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Acompañantes</p>
-                              <div className="space-y-1">
+                              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Acompañantes</p>
+                              <div className="space-y-1.5">
                                 {(answers[field.id] as GuestData[]).map((g, i) => (
-                                    <p key={i} className="text-xs font-medium text-gray-700">{g.name} <span className="text-[9px] text-gray-400 font-mono ml-1">({g.idType}: {g.idNum})</span></p>
+                                    <p key={i} className="text-xs font-bold text-gray-700">{g.name} <span className="text-[10px] text-gray-400 font-mono ml-2">({g.idType}: {g.idNum})</span></p>
                                 ))}
                               </div>
                           </div>
                       </div>
                   ))}
 
-                  {/* Desglose de Precios */}
-                  <div className="pt-4 border-t border-dashed border-gray-200 space-y-3">
+                  {/* Finanzas en Recibo */}
+                  <div className="pt-6 border-t border-dashed border-gray-200 space-y-4">
                       <div className="flex justify-between items-center text-sm">
-                          <span className="text-gray-400 font-bold uppercase text-[10px] tracking-widest">Total Reserva</span>
+                          <span className="text-gray-400 font-black uppercase text-[10px] tracking-[0.15em]">Subtotal Estancia</span>
                           <span className="font-bold text-gray-800">{formatMoney(total)}</span>
                       </div>
                       <div className="flex justify-between items-center text-sm">
-                          <span className="text-gray-400 font-bold uppercase text-[10px] tracking-widest">Abono Realizado</span>
+                          <span className="text-gray-400 font-black uppercase text-[10px] tracking-[0.15em]">Abono Confirmado</span>
                           <span className="font-bold text-gray-800">{formatMoney(paid)}</span>
                       </div>
-                      <div className="flex justify-between items-center pt-2">
-                          <span className="text-red-500 font-black uppercase text-[10px] tracking-widest">Saldo Pendiente</span>
-                          <span className="font-black text-xl text-eco-500 tracking-tighter">{formatMoney(remaining)}</span>
+                      <div className="flex justify-between items-center pt-3 mt-1">
+                          <span className="text-red-500 font-black uppercase text-[11px] tracking-[0.2em]">Saldo Pendiente</span>
+                          <div className="text-right">
+                              <p className="font-black text-2xl text-eco-500 tracking-tighter leading-none">{formatMoney(remaining)}</p>
+                          </div>
                       </div>
                   </div>
               </div>
           </div>
 
-          <div className="px-8 pb-10 mt-auto">
-              <button onClick={onBack} className="w-full py-5 bg-dark-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-gray-800 transition-all active:scale-[0.98]">
-                  Cerrar y Volver
+          <div className="px-10 pb-12 mt-auto">
+              <button onClick={onBack} className="w-full py-5 bg-dark-900 text-white rounded-[20px] font-black uppercase tracking-widest hover:bg-gray-800 transition-all active:scale-[0.97] shadow-lg">
+                  Finalizar Proceso
               </button>
-              <p className="text-center mt-4 text-[9px] text-gray-400 font-bold uppercase tracking-[0.2em]">© Ecoparadise Digital Systems</p>
+              <div className="flex items-center justify-center gap-2 mt-6 opacity-40">
+                  <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                  <p className="text-[9px] text-gray-500 font-black uppercase tracking-[0.4em]">Ecoparadise Systems</p>
+                  <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+              </div>
           </div>
         </div>
       </div>
