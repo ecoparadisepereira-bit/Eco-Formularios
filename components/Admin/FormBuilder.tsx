@@ -1,6 +1,7 @@
+
 import React, { useState, useRef } from 'react';
 import { FormSchema, FieldType, FormField } from '../../types';
-import { PlusIcon, TrashIcon, SparklesIcon, GripVerticalIcon, ArrowLeftIcon, CalendarIcon, ClockIcon, ListCheckIcon, UploadCloudIcon, ImageIcon, CheckIcon, TextIcon, HashIcon, ListIcon, TagIcon, DollarIcon } from '../ui/Icons';
+import { PlusIcon, TrashIcon, SparklesIcon, GripVerticalIcon, ArrowLeftIcon, CalendarIcon, ClockIcon, ListCheckIcon, UploadCloudIcon, ImageIcon, CheckIcon, TextIcon, HashIcon, ListIcon, TagIcon, DollarIcon, ClockIcon as NightIcon } from '../ui/Icons';
 import { generateFormSchema } from '../../services/geminiService';
 
 interface FormBuilderProps {
@@ -20,7 +21,6 @@ const defaultThankYou = {
 
 const DEFAULT_SHEET_URL = "https://script.google.com/macros/s/AKfycbyQscuJzzO-2lQQiTwuNTL0-LrCQ-82LcVa8npwaK7AuG7LJa4sCLqJKSmL5qDZG851/exec";
 
-// Preset Backgrounds
 const PRESET_IMAGES = [
   { name: 'Hotel Luxury', url: 'https://images.unsplash.com/photo-1571896349842-6e53ce41e86c?q=80&w=2071&auto=format&fit=crop' },
   { name: 'Naturaleza Eco', url: 'https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?q=80&w=2070&auto=format&fit=crop' },
@@ -36,15 +36,12 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
   const [showAiModal, setShowAiModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Form State
   const [title, setTitle] = useState(initialData?.title || 'Nuevo Formulario');
   const [description, setDescription] = useState(initialData?.description || '');
   const [fields, setFields] = useState<FormField[]>(initialData?.fields || []);
   const [thankYou, setThankYou] = useState(initialData?.thankYouScreen || defaultThankYou);
   const [googleSheetUrl, setGoogleSheetUrl] = useState(initialData?.googleSheetUrl || DEFAULT_SHEET_URL);
   const [backgroundImageUrl, setBackgroundImageUrl] = useState(initialData?.backgroundImageUrl || '');
-  
-  // Custom ID
   const [customId, setCustomId] = useState(initialData?.id || generateId());
 
   const handleAiGenerate = async () => {
@@ -71,7 +68,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
       label: type === FieldType.PAYMENT ? 'Abono / Pago Parcial' : 'Nuevo Campo',
       required: false,
       options: (type === FieldType.SINGLE_SELECT || type === FieldType.CHECKBOX) ? ['Opción 1', 'Opción 2'] : undefined,
-      productOptions: type === FieldType.PRODUCT ? [{ label: 'Producto 1', price: 0 }] : undefined,
+      productOptions: type === FieldType.PRODUCT ? [{ label: 'Habitación Estándar', price: 0, isPerNight: true }] : undefined,
     };
     setFields([...fields, newField]);
   };
@@ -93,17 +90,16 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
     }
   };
 
-  // Product Helper Functions
   const addProductOption = (fieldId: string) => {
       setFields(fields.map(f => {
           if (f.id === fieldId && f.productOptions) {
-              return { ...f, productOptions: [...f.productOptions, { label: 'Nuevo Item', price: 0 }] };
+              return { ...f, productOptions: [...f.productOptions, { label: 'Nuevo Item', price: 0, isPerNight: false }] };
           }
           return f;
       }));
   };
 
-  const updateProductOption = (fieldId: string, index: number, key: 'label' | 'price', value: any) => {
+  const updateProductOption = (fieldId: string, index: number, key: 'label' | 'price' | 'isPerNight', value: any) => {
       setFields(fields.map(f => {
           if (f.id === fieldId && f.productOptions) {
               const newOpts = [...f.productOptions];
@@ -124,15 +120,13 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
       }));
   };
 
-
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
         if (file.size > 2 * 1024 * 1024) {
-            alert("La imagen original es demasiado pesada (>2MB). Intenta con una más pequeña.");
+            alert("La imagen es demasiado pesada.");
             return;
         }
-
         const reader = new FileReader();
         reader.onload = (event) => {
             const img = new Image();
@@ -142,16 +136,10 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
                 const scaleSize = MAX_WIDTH / img.width;
                 canvas.width = MAX_WIDTH;
                 canvas.height = img.height * scaleSize;
-                
                 const ctx = canvas.getContext('2d');
                 ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
                 const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
-                
-                if (dataUrl.length > 48000) {
-                     alert("La imagen sigue siendo demasiado compleja para guardarla directamente en Excel. Por favor usa una de las opciones de la Galería o pega una URL externa.");
-                } else {
-                    setBackgroundImageUrl(dataUrl);
-                }
+                setBackgroundImageUrl(dataUrl);
             };
             img.src = event.target?.result as string;
         };
@@ -161,12 +149,9 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
 
   const handleSave = async () => {
     if (!title.trim()) return alert("El título es obligatorio");
-    const cleanId = customId.trim().replace(/[^a-zA-Z0-9-_]/g, '');
-    if (!cleanId) return alert("El ID personalizado no es válido.");
-
     setIsSaving(true);
     const newForm: FormSchema = {
-      id: cleanId,
+      id: customId.trim().replace(/[^a-zA-Z0-9-_]/g, ''),
       title,
       description,
       fields,
@@ -184,378 +169,115 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
 
   return (
     <div className="bg-dark-900 min-h-screen text-white">
-      {/* Header */}
       <div className="sticky top-0 z-20 bg-dark-900/90 backdrop-blur border-b border-dark-800 px-8 py-4 flex justify-between items-center">
         <div className="flex items-center gap-4">
           <button onClick={onCancel} className="p-2 hover:bg-dark-800 rounded-full text-dark-muted hover:text-white transition-colors">
             <ArrowLeftIcon />
           </button>
-          <h2 className="text-xl font-bold">
-            {initialData ? 'Editar Formulario' : 'Crear Formulario'}
-          </h2>
+          <h2 className="text-xl font-bold">{initialData ? 'Editar Formulario' : 'Crear Formulario'}</h2>
         </div>
         <div className="flex gap-3">
            {!initialData && (
-            <button 
-              onClick={() => setShowAiModal(true)}
-              className="flex items-center gap-2 px-4 py-2 text-eco-400 bg-eco-500/10 hover:bg-eco-500/20 rounded-lg font-medium transition-colors border border-eco-500/20"
-            >
+            <button onClick={() => setShowAiModal(true)} className="flex items-center gap-2 px-4 py-2 text-eco-400 bg-eco-500/10 hover:bg-eco-500/20 rounded-lg font-medium transition-colors border border-eco-500/20">
               <SparklesIcon className="w-4 h-4" />
               <span>Generar con IA</span>
             </button>
            )}
-          <button 
-            onClick={handleSave}
-            disabled={isSaving}
-            className="px-6 py-2 bg-eco-500 text-dark-900 rounded-lg hover:bg-eco-400 font-bold disabled:opacity-70 disabled:cursor-wait flex items-center gap-2 shadow-glow"
-          >
+          <button onClick={handleSave} disabled={isSaving} className="px-6 py-2 bg-eco-500 text-dark-900 rounded-lg hover:bg-eco-400 font-bold disabled:opacity-70 disabled:cursor-wait flex items-center gap-2 shadow-glow">
             {isSaving ? 'Guardando...' : 'Guardar Cambios'}
           </button>
         </div>
       </div>
 
       <div className="max-w-6xl mx-auto p-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Sidebar Controls */}
         <div className="lg:col-span-4 space-y-6">
-          <div className="bg-dark-800 rounded-2xl border border-dark-700 p-5 shadow-card sticky top-28 max-h-[calc(100vh-140px)] overflow-y-auto custom-scrollbar">
+          <div className="bg-dark-800 rounded-2xl border border-dark-700 p-5 shadow-card sticky top-28 max-h-[calc(100vh-140px)] overflow-y-auto">
             <div className="flex gap-2 mb-6 border-b border-dark-700 pb-2">
-              <button 
-                onClick={() => setActiveTab('fields')}
-                className={`flex-1 pb-2 text-sm font-medium transition-colors ${activeTab === 'fields' ? 'text-eco-400 border-b-2 border-eco-500' : 'text-dark-muted hover:text-white'}`}
-              >
-                Campos
-              </button>
-              <button 
-                onClick={() => setActiveTab('settings')}
-                className={`flex-1 pb-2 text-sm font-medium transition-colors ${activeTab === 'settings' ? 'text-eco-400 border-b-2 border-eco-500' : 'text-dark-muted hover:text-white'}`}
-              >
-                Configuración
-              </button>
+              <button onClick={() => setActiveTab('fields')} className={`flex-1 pb-2 text-sm font-medium transition-colors ${activeTab === 'fields' ? 'text-eco-400 border-b-2 border-eco-500' : 'text-dark-muted hover:text-white'}`}>Campos</button>
+              <button onClick={() => setActiveTab('settings')} className={`flex-1 pb-2 text-sm font-medium transition-colors ${activeTab === 'settings' ? 'text-eco-400 border-b-2 border-eco-500' : 'text-dark-muted hover:text-white'}`}>Configuración</button>
             </div>
 
             {activeTab === 'fields' ? (
               <div className="grid grid-cols-1 gap-2">
-                <p className="text-xs text-dark-muted font-bold uppercase mb-2 tracking-wider mt-1 ml-1">Texto & Números</p>
-                <button onClick={() => handleAddField(FieldType.SHORT_TEXT)} className="field-btn flex items-center gap-3"><TextIcon className="w-4 h-4 opacity-70" /> Texto Corto</button>
-                <button onClick={() => handleAddField(FieldType.LONG_TEXT)} className="field-btn flex items-center gap-3"><TextIcon className="w-4 h-4 opacity-70" /> Texto Largo</button>
-                <button onClick={() => handleAddField(FieldType.NUMBER)} className="field-btn flex items-center gap-3"><HashIcon className="w-4 h-4 opacity-70" /> Número</button>
+                <p className="text-xs text-dark-muted font-bold uppercase mb-2 tracking-wider mt-1 ml-1">Básicos</p>
+                <button onClick={() => handleAddField(FieldType.SHORT_TEXT)} className="field-btn"><TextIcon className="w-4 h-4 opacity-70" /> Texto Corto</button>
+                <button onClick={() => handleAddField(FieldType.NUMBER)} className="field-btn"><HashIcon className="w-4 h-4 opacity-70" /> Número</button>
+                <button onClick={() => handleAddField(FieldType.DATE)} className="field-btn"><CalendarIcon className="w-4 h-4 opacity-70" /> Fecha</button>
                 
-                <p className="text-xs text-dark-muted font-bold uppercase mb-2 mt-4 tracking-wider ml-1">Selección</p>
-                <button onClick={() => handleAddField(FieldType.SINGLE_SELECT)} className="field-btn flex items-center gap-3"><ListIcon className="w-4 h-4 opacity-70" /> Selección Única</button>
-                <button onClick={() => handleAddField(FieldType.CHECKBOX)} className="field-btn flex items-center gap-3"><ListCheckIcon className="w-4 h-4 opacity-70" /> Casillas</button>
-
-                <p className="text-xs text-dark-muted font-bold uppercase mb-2 mt-4 tracking-wider ml-1">Ventas & Pagos</p>
-                <button onClick={() => handleAddField(FieldType.PRODUCT)} className="field-btn flex items-center gap-3 bg-eco-500/5 hover:bg-eco-500/10 border-eco-500/20"><TagIcon className="w-4 h-4 text-eco-400" /> Productos/Servicios</button>
-                <button onClick={() => handleAddField(FieldType.PAYMENT)} className="field-btn flex items-center gap-3 bg-eco-500/5 hover:bg-eco-500/10 border-eco-500/20"><DollarIcon className="w-4 h-4 text-eco-400" /> Abono / Pago</button>
-
-                <p className="text-xs text-dark-muted font-bold uppercase mb-2 mt-4 tracking-wider ml-1">Avanzado</p>
-                <button onClick={() => handleAddField(FieldType.DATE)} className="field-btn flex items-center gap-3"><CalendarIcon className="w-4 h-4 opacity-70" /> Fecha</button>
-                <button onClick={() => handleAddField(FieldType.TIME)} className="field-btn flex items-center gap-3"><ClockIcon className="w-4 h-4 opacity-70" /> Hora</button>
-                <button onClick={() => handleAddField(FieldType.IMAGE_UPLOAD)} className="field-btn flex items-center gap-3"><ImageIcon className="w-4 h-4 opacity-70" /> Subir Imagen</button>
+                <p className="text-xs text-dark-muted font-bold uppercase mb-2 mt-4 tracking-wider ml-1">Comercial</p>
+                <button onClick={() => handleAddField(FieldType.PRODUCT)} className="field-btn bg-eco-500/5 hover:bg-eco-500/10 border-eco-500/20"><TagIcon className="w-4 h-4 text-eco-400" /> Productos / Reservas</button>
+                <button onClick={() => handleAddField(FieldType.PAYMENT)} className="field-btn bg-eco-500/5 hover:bg-eco-500/10 border-eco-500/20"><DollarIcon className="w-4 h-4 text-eco-400" /> Abono / Pago</button>
+                
+                <p className="text-xs text-dark-muted font-bold uppercase mb-2 mt-4 tracking-wider ml-1">Otros</p>
+                <button onClick={() => handleAddField(FieldType.LONG_TEXT)} className="field-btn"><TextIcon className="w-4 h-4 opacity-70" /> Texto Largo</button>
+                <button onClick={() => handleAddField(FieldType.SINGLE_SELECT)} className="field-btn"><ListIcon className="w-4 h-4 opacity-70" /> Selección Única</button>
+                <button onClick={() => handleAddField(FieldType.IMAGE_UPLOAD)} className="field-btn"><ImageIcon className="w-4 h-4 opacity-70" /> Subir Imagen</button>
               </div>
             ) : (
               <div className="space-y-8 pr-1">
-                {/* SECTION 1: IDENTITY */}
                 <section>
-                    <h3 className="text-[10px] font-bold text-eco-400 uppercase tracking-widest mb-3 border-b border-dark-700 pb-2 flex items-center gap-2">
-                        <span>Identidad</span>
-                    </h3>
+                    <h3 className="text-[10px] font-bold text-eco-400 uppercase tracking-widest mb-3 border-b border-dark-700 pb-2">Identidad</h3>
                     <div>
                         <label className="block text-xs font-medium text-dark-muted mb-1.5">ID Personalizado (URL)</label>
-                        <div className="flex items-center group">
-                            <span className="bg-dark-900 border border-r-0 border-dark-600 rounded-l-lg px-3 py-2.5 text-xs text-dark-muted font-mono group-focus-within:border-eco-500 transition-colors">?id=</span>
-                            <input 
-                                type="text" 
-                                value={customId}
-                                onChange={(e) => setCustomId(e.target.value)}
-                                className="w-full !bg-[#050505] border border-l-0 border-dark-600 rounded-r-lg px-3 py-2.5 text-sm focus:border-eco-500 focus:ring-0 outline-none text-white font-mono transition-colors"
-                            />
-                        </div>
-                        <p className="text-[10px] text-dark-muted mt-1.5 opacity-70">Este identificador hace que el enlace sea corto y fácil de leer.</p>
+                        <input type="text" value={customId} onChange={(e) => setCustomId(e.target.value)} className={inputClass} />
                     </div>
                 </section>
-
-                {/* SECTION 2: INTEGRATIONS */}
                 <section>
-                    <h3 className="text-[10px] font-bold text-eco-400 uppercase tracking-widest mb-3 border-b border-dark-700 pb-2 flex items-center gap-2">
-                        <span>Integraciones</span>
-                    </h3>
-                    <div className="bg-dark-900/50 p-4 rounded-xl border border-dark-700">
-                        <label className="block text-xs font-bold text-white mb-2 uppercase">Webhook Google Sheets</label>
-                        <input 
-                        type="url" 
-                        value={googleSheetUrl}
-                        onChange={(e) => setGoogleSheetUrl(e.target.value)}
-                        className="w-full !bg-[#0B0E14] border border-dark-600 rounded-lg px-3 py-2 text-xs focus:border-eco-500 outline-none text-dark-muted focus:text-white transition-colors font-mono"
-                        placeholder="https://script.google.com/..."
-                        />
-                    </div>
+                    <h3 className="text-[10px] font-bold text-eco-400 uppercase tracking-widest mb-3 border-b border-dark-700 pb-2">Integraciones</h3>
+                    <input type="url" value={googleSheetUrl} onChange={(e) => setGoogleSheetUrl(e.target.value)} className={inputClass} placeholder="Google Sheet Webhook..." />
                 </section>
-
-                {/* SECTION 3: DESIGN */}
                 <section>
-                    <h3 className="text-[10px] font-bold text-eco-400 uppercase tracking-widest mb-3 border-b border-dark-700 pb-2 flex items-center gap-2">
-                        <span>Diseño & Marca</span>
-                    </h3>
-                    <div>
-                        <label className="block text-xs font-medium text-dark-muted mb-2">Imagen de Fondo</label>
-                        
-                        <div className="grid grid-cols-4 gap-2 mb-3">
-                            {PRESET_IMAGES.map((img, i) => (
-                                <button 
-                                    key={i}
-                                    onClick={() => setBackgroundImageUrl(img.url)}
-                                    className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all ${backgroundImageUrl === img.url ? 'border-eco-500 ring-2 ring-eco-500/20' : 'border-transparent hover:border-white/20'}`}
-                                    title={img.name}
-                                >
-                                    <img src={img.url} alt={img.name} className="w-full h-full object-cover" />
-                                </button>
-                            ))}
-                        </div>
-
-                        <div className="flex gap-2 mb-2">
-                            <input 
-                                type="file" 
-                                ref={fileInputRef} 
-                                className="hidden" 
-                                accept="image/*"
-                                onChange={handleImageUpload}
-                            />
-                            <button 
-                                onClick={() => fileInputRef.current?.click()}
-                                className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-dark-700 hover:bg-dark-600 border border-dark-600 rounded-lg text-xs font-bold text-white transition-colors"
-                            >
-                                <UploadCloudIcon className="w-4 h-4" />
-                                Subir desde PC
-                            </button>
-                        </div>
-
-                        <div className="relative group">
-                            <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                                <ImageIcon className="w-4 h-4 text-dark-600" />
-                            </div>
-                            <input 
-                                type="text" 
-                                value={backgroundImageUrl}
-                                onChange={(e) => setBackgroundImageUrl(e.target.value)}
-                                className={inputClass + " pl-9 text-xs"}
-                                placeholder="O pega una URL externa..."
-                            />
-                        </div>
-
-                        {/* Preview */}
-                        <div className="w-full h-24 rounded-lg overflow-hidden border border-dark-600 relative bg-dark-950 mt-3 group">
-                            {backgroundImageUrl ? (
-                                <>
-                                    <img src={backgroundImageUrl} alt="Preview" className="w-full h-full object-cover" onError={(e) => e.currentTarget.style.display = 'none'} />
-                                    {backgroundImageUrl.startsWith('data:image') && (
-                                        <div className="absolute bottom-1 right-1 bg-black/70 text-white text-[9px] px-1.5 py-0.5 rounded backdrop-blur font-medium">Subida Local</div>
-                                    )}
-                                </>
-                            ) : (
-                                <div className="flex items-center justify-center h-full text-dark-700 text-xs flex-col gap-1">
-                                    <ImageIcon className="w-5 h-5 opacity-20" />
-                                    <span>Sin imagen</span>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </section>
-
-                {/* SECTION 4: COMPLETION */}
-                <section>
-                    <h3 className="text-[10px] font-bold text-eco-400 uppercase tracking-widest mb-3 border-b border-dark-700 pb-2 flex items-center gap-2">
-                        <span>Pantalla Final</span>
-                    </h3>
-                    <div className="space-y-4">
-                        <div>
-                            <label className="block text-xs font-medium text-dark-muted mb-1.5">Título Agradecimiento</label>
-                            <input 
-                                type="text" 
-                                value={thankYou.title}
-                                onChange={(e) => setThankYou({...thankYou, title: e.target.value})}
-                                className={inputClass}
-                            />
-                        </div>
-                        <div>
-                        <label className="block text-xs font-medium text-dark-muted mb-1.5">Mensaje</label>
-                        <textarea 
-                            value={thankYou.message}
-                            onChange={(e) => setThankYou({...thankYou, message: e.target.value})}
-                            rows={4}
-                            className={inputClass + " resize-none text-sm leading-relaxed"}
-                        />
-                        <div className="mt-2 text-[10px] text-dark-muted bg-dark-900 px-2 py-1 rounded inline-block border border-dark-700 leading-relaxed">
-                            Tip: Usa <span className="text-eco-400 font-mono">@Etiqueta</span>, <span className="text-eco-400 font-mono">@Total</span>, <span className="text-eco-400 font-mono">@Abono</span> o <span className="text-eco-400 font-mono">@Pendiente</span>.
-                        </div>
-                        </div>
-                        <div>
-                        <label className="block text-xs font-medium text-dark-muted mb-1.5">Texto del Botón</label>
-                        <input 
-                            type="text" 
-                            value={thankYou.buttonText}
-                            onChange={(e) => setThankYou({...thankYou, buttonText: e.target.value})}
-                            className={inputClass}
-                        />
-                        </div>
-                    </div>
+                    <h3 className="text-[10px] font-bold text-eco-400 uppercase tracking-widest mb-3 border-b border-dark-700 pb-2">Pantalla Final</h3>
+                    <textarea value={thankYou.message} onChange={(e) => setThankYou({...thankYou, message: e.target.value})} rows={4} className={inputClass} />
                 </section>
               </div>
             )}
           </div>
         </div>
 
-        {/* Main Editor Area */}
         <div className="lg:col-span-8 space-y-6">
           <div className="bg-dark-800 border border-dark-700 rounded-2xl p-8 shadow-card">
-             <input 
-              type="text"
-              placeholder="Título del Formulario"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="text-3xl font-bold text-white w-full bg-transparent outline-none placeholder-dark-600 mb-2"
-             />
-             <input 
-              type="text"
-              placeholder="Descripción breve..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="text-dark-muted w-full bg-transparent outline-none placeholder-dark-600"
-             />
+             <input type="text" placeholder="Título del Formulario" value={title} onChange={(e) => setTitle(e.target.value)} className="text-3xl font-bold text-white w-full bg-transparent outline-none mb-2" />
+             <input type="text" placeholder="Descripción..." value={description} onChange={(e) => setDescription(e.target.value)} className="text-dark-muted w-full bg-transparent outline-none" />
           </div>
 
           <div className="space-y-4">
-            {fields.length === 0 && (
-              <div className="text-center py-16 bg-dark-800/50 rounded-2xl border border-dashed border-dark-700">
-                <p className="text-dark-muted">Arrastra campos aquí o usa la IA para empezar.</p>
-              </div>
-            )}
-            
             {fields.map((field, index) => (
-              <div key={field.id} className="group bg-dark-800 border border-dark-700 rounded-2xl p-6 hover:border-eco-500/30 transition-all relative shadow-sm">
-                <div className="absolute right-4 top-4 opacity-0 group-hover:opacity-100 flex gap-2 transition-opacity bg-dark-800 border border-dark-700 rounded-lg p-1 shadow-lg z-10">
-                  <button onClick={() => moveField(index, 'up')} disabled={index === 0} className="p-1.5 text-dark-muted hover:text-white disabled:opacity-30"><GripVerticalIcon className="w-4 h-4 rotate-90" /></button>
-                  <button onClick={() => moveField(index, 'down')} disabled={index === fields.length-1} className="p-1.5 text-dark-muted hover:text-white disabled:opacity-30"><GripVerticalIcon className="w-4 h-4 -rotate-90" /></button>
-                  <div className="w-px bg-dark-700 mx-1"></div>
+              <div key={field.id} className="group bg-dark-800 border border-dark-700 rounded-2xl p-6 relative">
+                <div className="absolute right-4 top-4 opacity-0 group-hover:opacity-100 flex gap-2">
                   <button onClick={() => removeField(field.id)} className="p-1.5 text-red-400 hover:text-red-300"><TrashIcon className="w-4 h-4" /></button>
                 </div>
 
                 <div className="space-y-4">
-                  <div className="flex gap-4 items-start">
-                    <div className="flex-1">
-                      <label className="block text-[10px] uppercase text-dark-muted font-bold mb-1 tracking-wider">Etiqueta de Pregunta</label>
-                      <input 
-                        value={field.label}
-                        onChange={(e) => updateField(field.id, { label: e.target.value })}
-                        className="w-full text-lg font-medium text-white bg-transparent border-b border-transparent hover:border-dark-600 focus:border-eco-500 outline-none transition-colors pb-1"
-                        placeholder="Escribe la pregunta..."
-                      />
-                    </div>
-                    <div className="w-36">
-                       <label className="block text-[10px] uppercase text-dark-muted font-bold mb-1 tracking-wider">Tipo</label>
-                       <div className="text-xs font-medium text-eco-400 py-1.5 px-3 bg-eco-500/10 rounded border border-eco-500/20 text-center flex items-center justify-center gap-2">
-                           {field.type === FieldType.SHORT_TEXT && <TextIcon className="w-3 h-3" />}
-                           {field.type === FieldType.LONG_TEXT && <TextIcon className="w-3 h-3" />}
-                           {field.type === FieldType.NUMBER && <HashIcon className="w-3 h-3" />}
-                           {field.type === FieldType.SINGLE_SELECT && <ListIcon className="w-3 h-3" />}
-                           {field.type === FieldType.CHECKBOX && <ListCheckIcon className="w-3 h-3" />}
-                           {field.type === FieldType.DATE && <CalendarIcon className="w-3 h-3" />}
-                           {field.type === FieldType.TIME && <ClockIcon className="w-3 h-3" />}
-                           {field.type === FieldType.IMAGE_UPLOAD && <ImageIcon className="w-3 h-3" />}
-                           {field.type === FieldType.PRODUCT && <TagIcon className="w-3 h-3" />}
-                           {field.type === FieldType.PAYMENT && <DollarIcon className="w-3 h-3" />}
-                           <span className="capitalize">{field.type.replace(/_/g, ' ')}</span>
-                       </div>
-                    </div>
-                  </div>
-
-                  <div className="pt-2 flex flex-wrap gap-6 items-start">
+                    <input value={field.label} onChange={(e) => updateField(field.id, { label: e.target.value })} className="w-full text-lg font-medium text-white bg-transparent border-b border-transparent hover:border-dark-600 focus:border-eco-500 outline-none pb-1" />
                     
-                    {/* OBLIGATORY PILL BUTTON */}
-                    <button 
-                      onClick={() => updateField(field.id, { required: !field.required })}
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold transition-all select-none mt-1 ${
-                        field.required 
-                          ? 'bg-eco-500 text-dark-900 shadow-[0_0_10px_rgba(34,197,94,0.4)]' 
-                          : 'bg-dark-900 border border-dark-700 text-dark-muted hover:border-dark-500'
-                      }`}
-                    >
-                      {field.required && <CheckIcon className="w-3 h-3" />}
-                      {field.required ? 'Obligatorio' : 'Opcional'}
-                    </button>
-
-                    {/* Numeric Config */}
-                    {(field.type === FieldType.NUMBER || field.type === FieldType.PAYMENT) && (
-                      <div className="flex gap-2 items-center text-sm">
-                        <input 
-                          type="number" 
-                          placeholder="Min"
-                          value={field.validation?.min || ''}
-                          onChange={(e) => updateField(field.id, { validation: { ...field.validation, min: parseInt(e.target.value) || undefined } })}
-                          className="w-20 !bg-[#050505] border border-dark-600 rounded px-3 py-1.5 text-white text-xs"
-                        />
-                        <span className="text-dark-600">-</span>
-                        <input 
-                          type="number" 
-                          placeholder="Max"
-                          value={field.validation?.max || ''}
-                          onChange={(e) => updateField(field.id, { validation: { ...field.validation, max: parseInt(e.target.value) || undefined } })}
-                          className="w-20 !bg-[#050505] border border-dark-600 rounded px-3 py-1.5 text-white text-xs"
-                        />
-                      </div>
-                    )}
-
-                    {/* Standard Options */}
-                    {(field.type === FieldType.SINGLE_SELECT || field.type === FieldType.CHECKBOX) && (
-                      <div className="flex-1">
-                        <input 
-                          type="text"
-                          value={field.options?.join(', ') || ''}
-                          onChange={(e) => updateField(field.id, { options: e.target.value.split(',').map(s => s.trim()) })}
-                          className={inputClass}
-                          placeholder="Opciones separadas por coma..."
-                        />
-                      </div>
-                    )}
-
-                    {/* PRODUCT EDITOR */}
                     {field.type === FieldType.PRODUCT && (
-                        <div className="w-full bg-dark-900/50 p-4 rounded-xl border border-dark-700 mt-2">
-                             <div className="flex justify-between items-center mb-2">
-                                <label className="text-xs font-bold text-dark-muted uppercase tracking-wider">Lista de Productos / Servicios</label>
-                                <button onClick={() => addProductOption(field.id)} className="text-xs text-eco-400 hover:text-white font-medium flex items-center gap-1">
-                                    <PlusIcon className="w-3 h-3" /> Agregar Ítem
-                                </button>
+                        <div className="w-full bg-dark-900/50 p-4 rounded-xl border border-dark-700">
+                             <div className="flex justify-between items-center mb-4">
+                                <label className="text-xs font-bold text-dark-muted uppercase tracking-wider">Opciones de Producto / Habitaciones</label>
+                                <button onClick={() => addProductOption(field.id)} className="text-xs text-eco-400 hover:text-white flex items-center gap-1"><PlusIcon className="w-3 h-3" /> Agregar Item</button>
                              </div>
-                             <div className="space-y-2">
+                             <div className="space-y-3">
                                  {field.productOptions?.map((opt, idx) => (
-                                     <div key={idx} className="flex gap-2 items-center">
-                                         <input 
-                                            type="text" 
-                                            value={opt.label}
-                                            onChange={(e) => updateProductOption(field.id, idx, 'label', e.target.value)}
-                                            placeholder="Nombre del Producto"
-                                            className="flex-1 !bg-[#050505] border border-dark-600 rounded px-3 py-1.5 text-white text-sm"
-                                         />
-                                         <div className="relative w-32">
-                                            <span className="absolute left-3 top-1.5 text-dark-muted text-sm">$</span>
-                                            <input 
-                                                type="number" 
-                                                value={opt.price}
-                                                onChange={(e) => updateProductOption(field.id, idx, 'price', parseFloat(e.target.value) || 0)}
-                                                placeholder="0.00"
-                                                className="w-full !bg-[#050505] border border-dark-600 rounded pl-6 pr-3 py-1.5 text-white text-sm text-right"
-                                            />
-                                         </div>
-                                         <button onClick={() => removeProductOption(field.id, idx)} className="p-1.5 text-dark-600 hover:text-red-400">
-                                            <TrashIcon className="w-4 h-4" />
+                                     <div key={idx} className="flex gap-3 items-center">
+                                         <input type="text" value={opt.label} onChange={(e) => updateProductOption(field.id, idx, 'label', e.target.value)} placeholder="Ej: Suite King" className="flex-1 !bg-[#050505] border border-dark-600 rounded px-3 py-1.5 text-white text-sm" />
+                                         <input type="number" value={opt.price} onChange={(e) => updateProductOption(field.id, idx, 'price', parseFloat(e.target.value) || 0)} placeholder="0.00" className="w-24 !bg-[#050505] border border-dark-600 rounded px-3 py-1.5 text-white text-sm" />
+                                         
+                                         <button 
+                                            onClick={() => updateProductOption(field.id, idx, 'isPerNight', !opt.isPerNight)}
+                                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all border ${opt.isPerNight ? 'bg-eco-500/10 border-eco-500 text-eco-400' : 'bg-dark-900 border-dark-600 text-dark-muted'}`}
+                                            title="Si está activo, multiplicará el precio por el número de noches"
+                                         >
+                                            <NightIcon className="w-3 h-3" />
+                                            X NOCHE
                                          </button>
+
+                                         <button onClick={() => removeProductOption(field.id, idx)} className="p-1.5 text-dark-600 hover:text-red-400"><TrashIcon className="w-4 h-4" /></button>
                                      </div>
                                  ))}
                              </div>
                         </div>
                     )}
-                  </div>
                 </div>
               </div>
             ))}
@@ -563,66 +285,11 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
         </div>
       </div>
 
-      {/* AI Modal */}
-      {showAiModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-dark-800 rounded-2xl border border-dark-700 shadow-2xl w-full max-w-lg p-6 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-eco-500/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
-            
-            <div className="flex items-center gap-3 mb-6 relative">
-              <div className="w-10 h-10 rounded-xl bg-eco-500/10 flex items-center justify-center text-eco-400">
-                <SparklesIcon className="w-6 h-6" />
-              </div>
-              <h3 className="text-xl font-bold text-white">Generador AI</h3>
-            </div>
-            
-            {(!process.env.API_KEY || process.env.API_KEY.length < 10) && (
-                <div className="mb-4 p-3 bg-red-900/20 text-red-400 text-sm rounded-lg border border-red-500/20">
-                    <strong>Error:</strong> Falta API Key. <a href="https://aistudio.google.com/app/apikey" target="_blank" className="underline">Configurar</a>
-                </div>
-            )}
-
-            <textarea
-              value={aiPrompt}
-              onChange={(e) => setAiPrompt(e.target.value)}
-              className="w-full !bg-[#050505] border border-dark-700 rounded-xl p-4 mb-6 text-white focus:border-eco-500 outline-none resize-none h-32 placeholder-dark-600"
-              placeholder="Ej: Formulario de satisfacción para hotel de lujo..."
-            />
-            
-            <div className="flex justify-end gap-3">
-              <button 
-                onClick={() => setShowAiModal(false)}
-                className="px-4 py-2 text-dark-muted hover:text-white hover:bg-dark-700 rounded-lg font-medium transition-colors"
-              >
-                Cancelar
-              </button>
-              <button 
-                onClick={handleAiGenerate}
-                disabled={loadingAi || !aiPrompt.trim()}
-                className="px-5 py-2 bg-eco-500 text-dark-900 rounded-lg hover:bg-eco-400 font-bold disabled:opacity-50 flex items-center gap-2 shadow-glow"
-              >
-                {loadingAi ? 'Creando...' : 'Generar'}
-                {!loadingAi && <SparklesIcon className="w-4 h-4" />}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <style>{`
         .field-btn {
-            @apply text-left px-4 py-3 bg-dark-700/50 hover:bg-dark-700 hover:text-white text-dark-muted rounded-xl text-sm font-medium transition-all border border-dark-700 hover:border-eco-500/30 w-full shadow-sm;
+            display: flex; align-items: center; gap: 0.75rem; width: 100%; text-align: left; padding: 0.75rem 1rem; background: rgba(31, 41, 55, 0.5); border: 1px solid #1f2937; border-radius: 0.75rem; font-size: 0.875rem; color: #94a3b8; transition: all 0.2s;
         }
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 4px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #374151;
-          border-radius: 4px;
-        }
+        .field-btn:hover { background: #1f2937; color: white; border-color: rgba(74, 222, 128, 0.3); }
       `}</style>
     </div>
   );

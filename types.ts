@@ -5,25 +5,26 @@ export enum FieldType {
   LONG_TEXT = 'long_text',
   NUMBER = 'number',
   SINGLE_SELECT = 'single_select',
-  CHECKBOX = 'checkbox', // NEW: Multi-select
-  DATE = 'date',         // NEW
-  TIME = 'time',         // NEW
+  CHECKBOX = 'checkbox', 
+  DATE = 'date',         
+  TIME = 'time',         
   IMAGE_UPLOAD = 'image_upload',
-  PRODUCT = 'product',   // NEW: Products with prices
-  PAYMENT = 'payment',   // NEW: Payment amount input
+  PRODUCT = 'product',   
+  PAYMENT = 'payment',   
 }
 
 // Validation Rules
 export interface ValidationRules {
   min?: number;
   max?: number;
-  maxSizeMB?: number; // For images
-  acceptedFormats?: string[]; // e.g. ['image/jpeg', 'image/png']
+  maxSizeMB?: number; 
+  acceptedFormats?: string[]; 
 }
 
 export interface ProductOption {
   label: string;
   price: number;
+  isPerNight?: boolean; // NEW: Toggle for per-night billing
 }
 
 // Field Definition
@@ -33,15 +34,15 @@ export interface FormField {
   label: string;
   placeholder?: string;
   required: boolean;
-  options?: string[]; // For Select and Checkbox
-  productOptions?: ProductOption[]; // For Product field
+  options?: string[]; 
+  productOptions?: ProductOption[]; 
   validation?: ValidationRules;
 }
 
 // Thank You Screen Configuration
 export interface ThankYouScreen {
   title: string;
-  message: string; // Rich text (simple markdown or html)
+  message: string; 
   redirectUrl?: string;
   buttonText?: string;
 }
@@ -55,8 +56,8 @@ export interface FormSchema {
   createdAt: number;
   fields: FormField[];
   thankYouScreen: ThankYouScreen;
-  googleSheetUrl?: string; // Webhook URL for Google Sheets
-  backgroundImageUrl?: string; // NEW: Custom background image
+  googleSheetUrl?: string; 
+  backgroundImageUrl?: string; 
 }
 
 // Form Response
@@ -64,7 +65,7 @@ export interface FormResponse {
   id: string;
   formId: string;
   submittedAt: number;
-  answers: Record<string, string | number | string[] | null>; // Field ID -> Value
+  answers: Record<string, string | number | string[] | null>; 
 }
 
 // Global App Configuration
@@ -72,5 +73,5 @@ export interface AppConfig {
   appName: string;
   logoUrl: string;
   faviconUrl: string;
-  loginImageUrl: string; // NEW: Customizable Login Hero Image
+  loginImageUrl: string; 
 }
