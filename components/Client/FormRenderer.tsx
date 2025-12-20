@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { FormSchema, FieldType, FormResponse } from '../../types';
+import { FormSchema, FieldType, FormResponse, FormField } from '../../types';
 import { ArrowLeftIcon, CheckIcon, DownloadIcon, TagIcon, ClockIcon, PlusIcon, TrashIcon, CalendarIcon, StarIcon } from '../ui/Icons';
 
 interface FormRendererProps {
@@ -13,8 +13,11 @@ const HOTEL_BG_IMAGE = "https://images.unsplash.com/photo-1571896349842-6e53ce41
 
 interface GuestData {
     name: string;
+    idType: string;
     idNum: string;
 }
+
+const DOCUMENT_TYPES = ["CC", "CE", "Pasaporte", "TI", "Registro Civil"];
 
 // --- COMPONENTE DE ESTRELLAS ---
 const StarRating = ({ value, onChange }: { value: number, onChange: (val: number) => void }) => {
@@ -46,10 +49,11 @@ const StarRating = ({ value, onChange }: { value: number, onChange: (val: number
     );
 };
 
-// --- COMPONENTE CALENDARIO PERSONALIZADO CON POSICIONAMIENTO INTELIGENTE ---
+// --- COMPONENTE CALENDARIO CON SELECTOR DE AÑO ---
 const CustomDatePicker = ({ value, onChange, placeholder }: { value: string, onChange: (val: string) => void, placeholder: string }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [currentDate, setCurrentDate] = useState(value ? new Date(value + 'T12:00:00') : new Date());
+    const [showYearSelector, setShowYearSelector] = useState(false);
     const [dropUp, setDropUp] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
 
@@ -60,13 +64,14 @@ const CustomDatePicker = ({ value, onChange, placeholder }: { value: string, onC
         const handleClickOutside = (event: MouseEvent) => {
             if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
                 setIsOpen(false);
+                setShowYearSelector(false);
             }
         };
 
         if (isOpen && containerRef.current) {
             const rect = containerRef.current.getBoundingClientRect();
             const spaceBelow = window.innerHeight - rect.bottom;
-            setDropUp(spaceBelow < 320);
+            setDropUp(spaceBelow < 350);
         }
 
         document.addEventListener('mousedown', handleClickOutside);
@@ -116,6 +121,21 @@ const CustomDatePicker = ({ value, onChange, placeholder }: { value: string, onC
         setCurrentDate(newDate);
     };
 
+    const changeYear = (year: number) => {
+        const newDate = new Date(year, currentDate.getMonth(), 1);
+        setCurrentDate(newDate);
+        setShowYearSelector(false);
+    };
+
+    const years = useMemo(() => {
+        const currentYear = new Date().getFullYear();
+        const list = [];
+        for (let y = currentYear - 5; y <= currentYear + 10; y++) {
+            list.push(y);
+        }
+        return list;
+    }, []);
+
     return (
         <div className="relative" ref={containerRef}>
             <div 
@@ -142,24 +162,48 @@ const CustomDatePicker = ({ value, onChange, placeholder }: { value: string, onC
                         <button type="button" onClick={() => changeMonth(-1)} className="p-2 hover:bg-dark-800 rounded-xl text-dark-muted hover:text-white transition-all">
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
                         </button>
+                        
                         <div className="flex flex-col items-center">
-                            <span className="font-black text-xs text-eco-400 uppercase tracking-widest">{monthNames[currentDate.getMonth()]}</span>
-                            <span className="font-bold text-lg text-white leading-none mt-0.5">{currentDate.getFullYear()}</span>
+                            <span className="font-black text-[10px] text-eco-400 uppercase tracking-widest mb-1">{monthNames[currentDate.getMonth()]}</span>
+                            <button 
+                                type="button" 
+                                onClick={() => setShowYearSelector(!showYearSelector)}
+                                className="font-bold text-lg text-white leading-none hover:text-eco-400 flex items-center gap-1 transition-colors"
+                            >
+                                {currentDate.getFullYear()}
+                                <svg className={`w-3 h-3 transition-transform ${showYearSelector ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                            </button>
                         </div>
+
                         <button type="button" onClick={() => changeMonth(1)} className="p-2 hover:bg-dark-800 rounded-xl text-dark-muted hover:text-white transition-all">
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
                         </button>
                     </div>
-                    
-                    <div className="grid grid-cols-7 gap-1.5 mb-2">
-                        {dayNames.map(d => <div key={d} className="h-9 flex items-center justify-center text-[10px] font-black text-dark-muted tracking-tighter opacity-60">{d}</div>)}
-                        {renderDays()}
-                    </div>
 
-                    <div className="flex justify-between mt-5 pt-4 border-t border-dark-700/50">
-                        <button type="button" onClick={() => { onChange(''); setIsOpen(false); }} className="px-4 py-1.5 rounded-lg text-[10px] font-bold text-red-400 hover:bg-red-400/10 uppercase tracking-widest transition-colors">Limpiar</button>
-                        <button type="button" onClick={() => { setCurrentDate(new Date()); }} className="px-4 py-1.5 rounded-lg text-[10px] font-bold text-eco-400 hover:bg-eco-400/10 uppercase tracking-widest transition-colors">Hoy</button>
-                    </div>
+                    {showYearSelector ? (
+                        <div className="grid grid-cols-4 gap-2 h-48 overflow-y-auto pr-2 custom-scrollbar">
+                            {years.map(y => (
+                                <button 
+                                    key={y} 
+                                    onClick={() => changeYear(y)}
+                                    className={`py-2 rounded-lg text-sm font-bold transition-all ${currentDate.getFullYear() === y ? 'bg-eco-500 text-dark-900' : 'text-dark-muted hover:bg-dark-800 hover:text-white'}`}
+                                >
+                                    {y}
+                                </button>
+                            ))}
+                        </div>
+                    ) : (
+                        <>
+                            <div className="grid grid-cols-7 gap-1.5 mb-2">
+                                {dayNames.map(d => <div key={d} className="h-9 flex items-center justify-center text-[10px] font-black text-dark-muted tracking-tighter opacity-60">{d}</div>)}
+                                {renderDays()}
+                            </div>
+                            <div className="flex justify-between mt-5 pt-4 border-t border-dark-700/50">
+                                <button type="button" onClick={() => { onChange(''); setIsOpen(false); }} className="px-4 py-1.5 rounded-lg text-[10px] font-bold text-red-400 hover:bg-red-400/10 uppercase tracking-widest transition-colors">Limpiar</button>
+                                <button type="button" onClick={() => { setCurrentDate(new Date()); }} className="px-4 py-1.5 rounded-lg text-[10px] font-bold text-eco-400 hover:bg-eco-400/10 uppercase tracking-widest transition-colors">Hoy</button>
+                            </div>
+                        </>
+                    )}
                 </div>
             )}
         </div>
@@ -195,7 +239,7 @@ export const FormRenderer: React.FC<FormRendererProps> = ({ form, onBack }) => {
   const addGuest = (fieldId: string) => {
       setAnswers(prev => {
           const current = prev[fieldId] || [];
-          return { ...prev, [fieldId]: [...current, { name: '', idNum: '' }] };
+          return { ...prev, [fieldId]: [...current, { name: '', idType: 'CC', idNum: '' }] };
       });
   };
 
@@ -261,6 +305,43 @@ export const FormRenderer: React.FC<FormRendererProps> = ({ form, onBack }) => {
       return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
   };
 
+  const interpolateMessage = (message: string, answers: Record<string, any>, financials: any, fields: FormField[]) => {
+      let result = message;
+      
+      // Interpolate financials
+      result = result.replace(/@total/gi, `${formatMoney(financials.total)}`);
+      result = result.replace(/@abono/gi, `${formatMoney(financials.paid)}`);
+      result = result.replace(/@pendiente/gi, `${formatMoney(financials.remaining)}`);
+      result = result.replace(/@noches/gi, `${financials.nights}`);
+
+      // Interpolate field labels
+      fields.forEach(field => {
+          const val = answers[field.id];
+          let displayVal = "";
+          if (Array.isArray(val)) {
+              if (field.type === FieldType.ADDITIONAL_PERSON) {
+                  displayVal = val.length > 0 ? val.map((g: GuestData) => `${g.name} (${g.idType} ${g.idNum})`).join(', ') : "Ninguno";
+              } else {
+                  displayVal = val.join(', ');
+              }
+          } else {
+              displayVal = val !== undefined && val !== null ? String(val) : "";
+          }
+
+          const regex = new RegExp(`@${field.label}`, 'gi');
+          result = result.replace(regex, `${displayVal}`);
+      });
+
+      // Específicos comunes (para evitar errores si no están exactos)
+      result = result.replace(/@Nombre Completo/gi, `${answers[fields.find(f => /nombre/i.test(f.label))?.id || ''] || ''}`);
+      result = result.replace(/@Número de teléfono/gi, `${answers[fields.find(f => /teléfono|whatsapp/i.test(f.label))?.id || ''] || ''}`);
+      result = result.replace(/@Fecha de su reserva/gi, `${answers[fields.find(f => /fecha|entrada/i.test(f.label))?.id || ''] || ''}`);
+      result = result.replace(/@Habitación reservada/gi, `${answers[fields.find(f => f.type === FieldType.PRODUCT)?.id || '']?.join(', ') || ''}`);
+      result = result.replace(/@Número de Documento/gi, `${answers[fields.find(f => /documento|identificación/i.test(f.label))?.id || ''] || ''}`);
+
+      return result;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -272,7 +353,7 @@ export const FormRenderer: React.FC<FormRendererProps> = ({ form, onBack }) => {
         if (f.type === FieldType.ADDITIONAL_PERSON) {
             const guests = (val as GuestData[]) || [];
             cleanData[f.label] = guests.length > 0 
-                ? `${guests.length} Adicionales: ` + guests.map(g => `${g.name} (${g.idNum})`).join(' | ') 
+                ? `${guests.length} Adicionales: ` + guests.map(g => `${g.name} (${g.idType} ${g.idNum})`).join(' | ') 
                 : "Ninguno";
         } else {
             cleanData[f.label] = Array.isArray(val) ? val.join(', ') : (val || ""); 
@@ -298,21 +379,96 @@ export const FormRenderer: React.FC<FormRendererProps> = ({ form, onBack }) => {
   };
 
   if (isSubmitted) {
-    const { total, paid, remaining, nights } = calculateFinancials();
+    const financials = calculateFinancials();
+    const { total, remaining, nights, paid } = financials;
+    const formattedDate = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    
     return (
-      <div className="min-h-screen bg-dark-950 text-white flex items-center justify-center p-4">
-        <div className="bg-dark-900 border border-dark-800 rounded-3xl p-8 max-w-md w-full text-center shadow-2xl">
-          <div className="w-20 h-20 bg-eco-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-            <CheckIcon className="w-10 h-10 text-eco-400" />
+      <div className="min-h-screen bg-dark-950 text-dark-900 flex flex-col items-center justify-center p-4">
+        {/* Voucher Digital (Estilo Recibo Blanco) */}
+        <div className="bg-white rounded-[32px] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.4)] max-w-lg w-full overflow-hidden animate-in zoom-in-95 duration-500 flex flex-col">
+          
+          {/* Top Branding Section */}
+          <div className="bg-white px-8 pt-10 pb-6 text-center border-b border-gray-100 relative">
+             <div className="absolute top-4 left-1/2 -translate-x-1/2">
+                <div className="w-10 h-1 bg-eco-500 rounded-full"></div>
+             </div>
+             <div className="w-14 h-14 bg-eco-50 flex items-center justify-center rounded-2xl mx-auto mb-4">
+                <CheckIcon className="w-8 h-8 text-eco-500" />
+             </div>
+             <h2 className="text-2xl font-black tracking-tight uppercase mb-1">¡Reserva Confirmada!</h2>
+             <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">{formattedDate}</p>
           </div>
-          <h2 className="text-2xl font-bold mb-4">{form.thankYouScreen.title}</h2>
-          <div className="bg-dark-800 p-4 rounded-xl text-left border border-dark-700 mb-6 space-y-2">
-             <p className="text-sm text-dark-muted">Total: <span className="text-white font-bold">{formatMoney(total)}</span></p>
-             <p className="text-sm text-dark-muted">Abonado: <span className="text-white font-bold">{formatMoney(paid)}</span></p>
-             <p className="text-sm text-dark-muted">Saldo: <span className="text-eco-400 font-bold">{formatMoney(remaining)}</span></p>
-             {nights > 0 && <p className="text-xs text-eco-400/70 uppercase font-bold">Reserva por {nights} noches</p>}
+
+          {/* Main Info Section (Interpolated Message) */}
+          <div className="px-10 py-8 text-gray-600 leading-relaxed text-[15px] space-y-4">
+              <p className="whitespace-pre-wrap">
+                  {interpolateMessage(form.thankYouScreen.message, answers, financials, form.fields)}
+              </p>
           </div>
-          <button onClick={onBack} className="w-full py-3 bg-eco-600 rounded-xl font-bold hover:bg-eco-500 transition-colors">Volver</button>
+
+          {/* Details Grid (Ticket Look) */}
+          <div className="bg-gray-50/80 mx-8 mb-8 p-6 rounded-3xl border border-gray-100">
+              <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-200/50">
+                  <span className="text-[10px] font-black text-eco-600 uppercase tracking-widest">Resumen de Reserva</span>
+                  {nights > 0 && <span className="bg-eco-500 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-tighter">{nights} Noches</span>}
+              </div>
+
+              <div className="space-y-6">
+                  {/* Habitaciones */}
+                  {form.fields.filter(f => f.type === FieldType.PRODUCT && answers[f.id]?.length > 0).map(field => (
+                      <div key={field.id} className="flex gap-4">
+                          <div className="w-8 h-8 rounded-lg bg-white border border-gray-100 flex items-center justify-center text-eco-500 flex-shrink-0">
+                             <TagIcon className="w-4 h-4" />
+                          </div>
+                          <div className="flex-1">
+                              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Unidad / Suite</p>
+                              <p className="text-sm font-bold text-gray-800">{(answers[field.id] as string[]).join(', ')}</p>
+                          </div>
+                      </div>
+                  ))}
+
+                  {/* Huéspedes */}
+                  {form.fields.filter(f => f.type === FieldType.ADDITIONAL_PERSON && (answers[f.id] as GuestData[])?.length > 0).map(field => (
+                      <div key={field.id} className="flex gap-4">
+                          <div className="w-8 h-8 rounded-lg bg-white border border-gray-100 flex items-center justify-center text-amber-500 flex-shrink-0">
+                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                          </div>
+                          <div className="flex-1">
+                              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Acompañantes</p>
+                              <div className="space-y-1">
+                                {(answers[field.id] as GuestData[]).map((g, i) => (
+                                    <p key={i} className="text-xs font-medium text-gray-700">{g.name} <span className="text-[9px] text-gray-400 font-mono ml-1">({g.idType}: {g.idNum})</span></p>
+                                ))}
+                              </div>
+                          </div>
+                      </div>
+                  ))}
+
+                  {/* Desglose de Precios */}
+                  <div className="pt-4 border-t border-dashed border-gray-200 space-y-3">
+                      <div className="flex justify-between items-center text-sm">
+                          <span className="text-gray-400 font-bold uppercase text-[10px] tracking-widest">Total Reserva</span>
+                          <span className="font-bold text-gray-800">{formatMoney(total)}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-sm">
+                          <span className="text-gray-400 font-bold uppercase text-[10px] tracking-widest">Abono Realizado</span>
+                          <span className="font-bold text-gray-800">{formatMoney(paid)}</span>
+                      </div>
+                      <div className="flex justify-between items-center pt-2">
+                          <span className="text-red-500 font-black uppercase text-[10px] tracking-widest">Saldo Pendiente</span>
+                          <span className="font-black text-xl text-eco-500 tracking-tighter">{formatMoney(remaining)}</span>
+                      </div>
+                  </div>
+              </div>
+          </div>
+
+          <div className="px-8 pb-10 mt-auto">
+              <button onClick={onBack} className="w-full py-5 bg-dark-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-gray-800 transition-all active:scale-[0.98]">
+                  Cerrar y Volver
+              </button>
+              <p className="text-center mt-4 text-[9px] text-gray-400 font-bold uppercase tracking-[0.2em]">© Ecoparadise Digital Systems</p>
+          </div>
         </div>
       </div>
     );
@@ -389,7 +545,7 @@ export const FormRenderer: React.FC<FormRendererProps> = ({ form, onBack }) => {
                                     >
                                         <TrashIcon className="w-4 h-4" />
                                     </button>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <div className="grid grid-cols-1 gap-5">
                                         <div className="space-y-2">
                                             <label className="text-[10px] font-bold text-dark-muted uppercase tracking-widest ml-1 text-[9px]">Nombre Completo</label>
                                             <input 
@@ -400,15 +556,27 @@ export const FormRenderer: React.FC<FormRendererProps> = ({ form, onBack }) => {
                                                 onChange={(e) => updateGuestData(field.id, idx, 'name', e.target.value)} 
                                             />
                                         </div>
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-bold text-dark-muted uppercase tracking-widest ml-1 text-[9px]">Documento / ID</label>
-                                            <input 
-                                                type="text" 
-                                                value={guest.idNum}
-                                                placeholder="Cédula / Pasaporte" 
-                                                className="w-full px-4 py-3 bg-dark-900/60 border border-dark-700 rounded-xl text-white outline-none focus:border-eco-500 text-sm transition-all" 
-                                                onChange={(e) => updateGuestData(field.id, idx, 'idNum', e.target.value)} 
-                                            />
+                                        <div className="grid grid-cols-12 gap-3">
+                                            <div className="col-span-4 space-y-2">
+                                                <label className="text-[10px] font-bold text-dark-muted uppercase tracking-widest ml-1 text-[9px]">Tipo</label>
+                                                <select 
+                                                    value={guest.idType}
+                                                    onChange={(e) => updateGuestData(field.id, idx, 'idType', e.target.value)}
+                                                    className="w-full px-3 py-3 bg-dark-900/60 border border-dark-700 rounded-xl text-white outline-none focus:border-eco-500 text-sm transition-all appearance-none cursor-pointer"
+                                                >
+                                                    {DOCUMENT_TYPES.map(t => <option key={t} value={t} className="bg-dark-900">{t}</option>)}
+                                                </select>
+                                            </div>
+                                            <div className="col-span-8 space-y-2">
+                                                <label className="text-[10px] font-bold text-dark-muted uppercase tracking-widest ml-1 text-[9px]">Documento / ID</label>
+                                                <input 
+                                                    type="text" 
+                                                    value={guest.idNum}
+                                                    placeholder="Número de ID" 
+                                                    className="w-full px-4 py-3 bg-dark-900/60 border border-dark-700 rounded-xl text-white outline-none focus:border-eco-500 text-sm transition-all" 
+                                                    onChange={(e) => updateGuestData(field.id, idx, 'idNum', e.target.value)} 
+                                                />
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
