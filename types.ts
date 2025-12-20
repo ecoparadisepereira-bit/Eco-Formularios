@@ -12,7 +12,8 @@ export enum FieldType {
   PRODUCT = 'product',   
   PAYMENT = 'payment',
   ADDITIONAL_PERSON = 'additional_person', 
-  STAR_RATING = 'star_rating', // NEW: Star rating field
+  STAR_RATING = 'star_rating', 
+  DOCUMENT_TYPE = 'document_type', // NEW: Field for ID Document types
 }
 
 // Validation Rules

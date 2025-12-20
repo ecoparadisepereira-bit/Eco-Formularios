@@ -538,6 +538,22 @@ export const FormRenderer: React.FC<FormRendererProps> = ({ form, onBack }) => {
                       />
                   )}
 
+                  {field.type === FieldType.DOCUMENT_TYPE && (
+                    <div className="relative">
+                      <select 
+                        value={answers[field.id] || ''}
+                        onChange={(e) => handleInputChange(field.id, e.target.value)}
+                        className="w-full px-5 py-4 bg-dark-800 border border-dark-700 rounded-2xl text-white outline-none focus:border-eco-500 focus:ring-4 focus:ring-eco-500/10 transition-all font-medium appearance-none cursor-pointer"
+                      >
+                        <option value="" className="bg-dark-900">Seleccionar tipo...</option>
+                        {DOCUMENT_TYPES.map(t => <option key={t} value={t} className="bg-dark-900">{t}</option>)}
+                      </select>
+                      <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-dark-muted">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                      </div>
+                    </div>
+                  )}
+
                   {field.type === FieldType.ADDITIONAL_PERSON && (
                       <div className="space-y-4">
                         <div className="flex justify-between items-center bg-dark-800/40 p-5 rounded-2xl border border-dark-700/50 backdrop-blur-sm">

@@ -40,7 +40,8 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
       label: type === FieldType.PAYMENT ? 'Abono / Pago Parcial' : 
              type === FieldType.DATE ? 'Fecha de Entrada' : 
              type === FieldType.ADDITIONAL_PERSON ? '¿Incluye Huésped Adicional?' : 
-             type === FieldType.STAR_RATING ? 'Calificación del Servicio' : 'Nuevo Campo',
+             type === FieldType.STAR_RATING ? 'Calificación del Servicio' : 
+             type === FieldType.DOCUMENT_TYPE ? 'Tipo de Documento' : 'Nuevo Campo',
       required: false,
       productOptions: type === FieldType.PRODUCT ? [{ label: 'Habitación Estándar', price: 0, isPerNight: true }] : undefined,
       additionalPrice: type === FieldType.ADDITIONAL_PERSON ? 0 : undefined,
@@ -159,6 +160,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ initialData, onSave, o
               <div className="grid grid-cols-1 gap-2">
                 <p className="text-xs text-dark-muted font-bold uppercase mb-2 tracking-wider mt-1 ml-1">Básicos</p>
                 <button onClick={() => handleAddField(FieldType.SHORT_TEXT)} className="field-btn"><TextIcon className="w-4 h-4 opacity-70" /> Texto Corto</button>
+                <button onClick={() => handleAddField(FieldType.DOCUMENT_TYPE)} className="field-btn"><svg className="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" /></svg> Tipo Documento</button>
                 <button onClick={() => handleAddField(FieldType.NUMBER)} className="field-btn"><HashIcon className="w-4 h-4 opacity-70" /> Número</button>
                 <button onClick={() => handleAddField(FieldType.DATE)} className="field-btn"><CalendarIcon className="w-4 h-4 opacity-70" /> Fecha</button>
                 <button onClick={() => handleAddField(FieldType.STAR_RATING)} className="field-btn"><StarIcon className="w-4 h-4 opacity-70" /> Calificación</button>
